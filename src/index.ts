@@ -11,32 +11,7 @@ import { EndpointInfo } from "./types/EndpointInfo";
 import { EndpointArgs } from "./types/EndpointArgs";
 import { HttpMethod } from "./types/HttpMethod";
 import { z } from "zod";
-
-type TypedRequestHandler<
-  TInput extends EndpointInputSchema,
-  TOutput extends EndpointOutputSchema,
-> = (
-  req: TypedRequest<TInput>,
-  res: TypedResponse<TOutput>,
-) => void | Promise<void>;
-
-type TypedRequest<T extends EndpointInputSchema> = {
-  body: z.infer<NonNullable<T["body"]>>;
-  query: z.infer<NonNullable<T["query"]>>;
-  params: z.infer<NonNullable<T["params"]>>;
-  headers: z.infer<NonNullable<T["headers"]>>;
-};
-
-type TypedResponse<T extends EndpointOutputSchema> = {
-  json: (data: z.infer<NonNullable<T[number]["body"]>>) => void;
-  status: <S extends T[number]["status"]>(
-    code: S,
-  ) => Omit<TypedResponse<T>, "status"> & {
-    json: (
-      data: z.infer<NonNullable<Extract<T[number], { status: S }>["body"]>>,
-    ) => void;
-  };
-};
+import { TypedRequestHandler } from "./types/TypedRequestHandler";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];

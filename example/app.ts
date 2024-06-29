@@ -6,7 +6,7 @@ import NodeCache from "node-cache";
 import { NodeCacheAdapter } from "./middlewares/cacheStore";
 import cache from "./middlewares/cache";
 import { jwtVerify } from "./middlewares/jwt";
-import { generateOpenAPI } from "../src/swaggerPlain";
+import { generateOpenAPI } from "../src/generator";
 import { errorHandler } from "./middlewares/errors";
 
 const port = process.env.PORT || 3000;
@@ -285,6 +285,31 @@ endpointsCollection.post(
   },
 );
 
+endpointsCollection.post(
+  "/add",
+  {
+    inputSchema: {
+      body: z.object({
+        a: z.number(),
+        b: z.number(),
+      }),
+    },
+    outputSchema: [
+      {
+        status: 200,
+        body: z.object({
+          result: z.number(),
+        }),
+      },
+    ],
+    summary: "Add two numbers",
+  },
+  (req, res) => {
+    const { a, b } = req.body;
+    res.json({ result: a + b });
+  },
+);
+
 endpointsCollection.get(
   "/products/search",
   {
@@ -450,10 +475,6 @@ endpointsCollection.post(
 );
 
 app.use(endpointsCollection.getRouter());
-
-app.get("/api-docs", (req, res) => {
-  res.json(endpointsCollection.getEndpoints());
-});
 
 app.get("/openapi", (req, res) => {
   res.json(
