@@ -104,7 +104,7 @@ export class EndpointsCollection {
       afterInput = [],
       beforeInput = [],
     }: EndpointArgs<EndpointInputSchema, EndpointOutputSchema>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: RequestHandler | RequestHandler[] | TypedRequestHandler<any, any>,
   ) {
     this.endpoints.push({
       path,
@@ -151,7 +151,7 @@ export class EndpointsCollection {
   >(
     path: string,
     args: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
     return this.callOriginal("get", path, args, handlers);
   }
@@ -173,7 +173,7 @@ export class EndpointsCollection {
   >(
     path: string,
     args: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
     return this.callOriginal("put", path, args, handlers);
   }
@@ -184,7 +184,7 @@ export class EndpointsCollection {
   >(
     path: string,
     args: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
     return this.callOriginal("delete", path, args, handlers);
   }
@@ -195,7 +195,7 @@ export class EndpointsCollection {
   >(
     path: string,
     args: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
     return this.callOriginal("patch", path, args, handlers);
   }
@@ -206,7 +206,7 @@ export class EndpointsCollection {
   >(
     path: string,
     args: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
     return this.callOriginal("options", path, args, handlers);
   }
@@ -217,7 +217,7 @@ export class EndpointsCollection {
   >(
     path: string,
     args: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
     return this.callOriginal("head", path, args, handlers);
   }
@@ -228,7 +228,7 @@ export class EndpointsCollection {
   >(
     path: string,
     args: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | RequestHandler[],
+    handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
     return this.callOriginal("trace", path, args, handlers);
   }

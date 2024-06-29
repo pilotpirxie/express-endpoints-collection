@@ -27,7 +27,8 @@ export function generateOpenAPI({
     for (const outputSchema of endpoint.outputSchema) {
       responses[outputSchema.status.toString()] = {
         description:
-          outputSchema.description || `Status code ${outputSchema.status}`,
+          outputSchema.description ||
+          `Response for status code ${outputSchema.status}`,
         content: outputSchema.body
           ? {
               "application/json": {
@@ -66,6 +67,5 @@ export function generateOpenAPI({
       title,
       version,
     },
-    servers: [{ url: "http://localhost:3000" }], // Adjust as needed
   });
 }

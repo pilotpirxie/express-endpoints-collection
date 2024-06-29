@@ -7,6 +7,7 @@ import { NodeCacheAdapter } from "./middlewares/cacheStore";
 import cache from "./middlewares/cache";
 import { jwtVerify } from "./middlewares/jwt";
 import { generateOpenAPI } from "../src/swaggerPlain";
+import { errorHandler } from "./middlewares/errors";
 
 const port = process.env.PORT || 3000;
 const app: Express = express();
@@ -180,12 +181,6 @@ endpointsCollection.put(
 endpointsCollection.get(
   "/posts",
   {
-    inputSchema: {
-      query: z.object({
-        page: z.string().optional(),
-        limit: z.string().optional(),
-      }),
-    },
     outputSchema: [
       {
         status: 200,
@@ -342,7 +337,7 @@ endpointsCollection.get(
     res.json({
       products,
       totalCount: 100,
-      page: parseInt(req.query.page as string) || 1,
+      page: 1,
       totalPages: 10,
     });
   },
@@ -469,6 +464,8 @@ app.get("/openapi", (req, res) => {
     }),
   );
 });
+
+app.use(errorHandler);
 
 app.listen(port, () => {
   console.info({
