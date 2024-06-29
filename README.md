@@ -45,14 +45,14 @@ import { z } from "zod";
 import { EndpointsCollection } from "express-endpoints-collection";
 import { generateOpenAPI } from "express-endpoints-collection/generator";
 
-// Create express app
+// 1. Create express app
 const app: Express = express();
 app.use(bodyParser.json());
 
-// Create endpoints collection, this will store all your endpoints
+// 2. Create endpoints collection, this will store all your endpoints
 const endpointsCollection = new EndpointsCollection();
 
-// Add new endpoint
+// 3. Add new endpoint
 endpointsCollection.post(
   "/add",
   {
@@ -72,16 +72,17 @@ endpointsCollection.post(
     ],
     summary: "Add two numbers",
   },
+  // 4. req and res are fully typed!
   (req, res) => {
     const { a, b } = req.body;
     res.json({ result: a + b });
   },
 );
 
-// Collection creates its own router, to use it just add it to your app
+// 5. Collection creates its own router, to use it just add it to your app
 app.use(endpointsCollection.getRouter());
 
-// Expose OpenAPI 3 schema
+// 6. Expose OpenAPI 3 schema
 app.get("/openapi", (req, res) => {
   res.json(
     generateOpenAPI({
@@ -92,7 +93,7 @@ app.get("/openapi", (req, res) => {
   );
 });
 
-// Start the server
+// 7. Start the server and done!
 app.listen(3000, () => {
   console.info(`Server is running on port http://localhost:3000`);
 });
@@ -100,7 +101,7 @@ app.listen(3000, () => {
 
 it will generate OpenAPI 3 definition as follow:
 
-```shell
+```yaml
 openapi: 3.0.0
 info:
   title: Minimal demo
@@ -141,7 +142,7 @@ paths:
 
 or as JSON
 
-```shell
+```json
 {
   "openapi": "3.0.0",
   "info": {
