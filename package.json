@@ -1,0 +1,25 @@
+{
+  "name": "simple-express-openapi-middleware",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/pilotpirxie/simple-express-openapi-middleware.git",
+  "author": "pilotpirxie <10637666+pilotpirxie@users.noreply.github.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "3.3.2",
+    "typescript": "^5.5.2",
+    "@types/express": "^4.17.21",
+    "@types/express-serve-static-core": "^4.19.5",
+    "@types/node": "^20.14.9",
+    "ts-node": "^10.9.2"
+  },
+  "scripts": {
+    "prettier": "prettier --write .",
+    "dev": "ts-node ./example/app.ts"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "express": "^4.19.2",
+    "joi": "^17.13.3"
+  }
+}
