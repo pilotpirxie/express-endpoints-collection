@@ -160,33 +160,63 @@ function convertJoiToParameters(
 }
 
 function convertJoiToJsonSchema(schema: Joi.Schema): SchemaObject {
-  console.log(JSON.stringify(schema));
-
-  if (schema.type === "object") {
+  if (typeof schema.describe === "function") {
     const description = schema.describe();
+    return convertDescriptionToJsonSchema(description);
+  } else {
+    return convertJoiSchemaToJsonSchema(schema);
+  }
+}
 
-    return {
-      type: "object",
-      properties: Object.fromEntries(
-        Object.entries(description.keys).map(([key, value]) => [
-          key,
-          convertJoiToJsonSchema(value as Joi.Schema),
-        ]),
-      ),
-      required: description.keys.required,
-    };
+function convertDescriptionToJsonSchema(description: any): SchemaObject {
+  switch (description.type) {
+    case "object":
+      return {
+        type: "object",
+        properties: Object.fromEntries(
+          Object.entries(description.keys).map(([key, value]) => [
+            key,
+            convertDescriptionToJsonSchema(value),
+          ]),
+        ),
+        required: description.keys?.required || undefined,
+      };
+    case "array":
+      return {
+        type: "array",
+        items: convertDescriptionToJsonSchema(description.items[0]),
+      };
+    default:
+      return {
+        type: description.type as DataType,
+      };
+  }
+}
+
+function convertJoiSchemaToJsonSchema(schema: Joi.Schema): SchemaObject {
+  if (Joi.isSchema(schema)) {
+    const schemaObj: SchemaObject = { type: schema.type as DataType };
+
+    if (schema.type === "object") {
+      schemaObj.properties = {};
+      schemaObj.required = [];
+
+      const children = (schema as any).$_terms.keys;
+      children.forEach((child: any) => {
+        schemaObj.properties![child.key] = convertJoiSchemaToJsonSchema(
+          child.schema,
+        );
+        if (child.schema.$_getFlag("presence") === "required") {
+          schemaObj.required!.push(child.key);
+        }
+      });
+    } else if (schema.type === "array") {
+      const itemsSchema = (schema as any).$_terms.items[0];
+      schemaObj.items = convertJoiSchemaToJsonSchema(itemsSchema);
+    }
+
+    return schemaObj;
   }
 
-  if (schema.type === "array") {
-    const description = schema.describe();
-
-    return {
-      type: "array",
-      items: convertJoiToJsonSchema(description.items),
-    };
-  }
-
-  return {
-    type: schema.type as DataType,
-  };
+  return { type: "object" };
 }
