@@ -42,13 +42,13 @@ export class EndpointsCollection {
 
       // @ts-ignore
       res.json = (body: any) => {
-        const { error: bodyError } = schema.body.validate(body) || {};
-        const { error: headersError } =
-          schema.headers?.validate(res.getHeaders()) || {};
+        const status = res.statusCode;
+        const schemaForStatus = schema.find((s) => s.status === status);
+        const { error: bodyError } =
+          schemaForStatus?.body?.validate(body) || {};
 
-        const error = bodyError || headersError;
-        if (error) {
-          console.error("Error in response validation", error.message);
+        if (bodyError) {
+          console.error("Error in response validation", bodyError.message);
           return res.status(500).json({
             error: "Internal server error",
           });

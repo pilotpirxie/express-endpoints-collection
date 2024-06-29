@@ -6,6 +6,6 @@ export type EndpointInfo = {
   path: string;
   method: HttpMethod;
   inputSchema?: EndpointInputSchema;
-  outputSchema?: EndpointOutputSchema;
+  outputSchema: EndpointOutputSchema;
   summary?: string;
 };

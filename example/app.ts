@@ -6,6 +6,7 @@ import NodeCache from "node-cache";
 import { NodeCacheAdapter } from "./middlewares/cacheStore";
 import cache from "./middlewares/cache";
 import { jwtVerify } from "./middlewares/jwt";
+import { generateOpenAPI } from "../src/swaggerPlain";
 
 const port = process.env.PORT || 3000;
 const app: Express = express();
@@ -33,13 +34,19 @@ endpointsCollection.post(
         email: Joi.string().email().required(),
       }),
     },
-    outputSchema: {
-      body: Joi.object({
-        id: Joi.number().required(),
-        name: Joi.string().required(),
-        email: Joi.string().email().required(),
-      }),
-    },
+    outputSchema: [
+      {
+        status: 200,
+        body: Joi.object({
+          id: Joi.number().required(),
+          token: Joi.string().required(),
+          notification_push_token: Joi.string().allow("").required(),
+          notification_user_id: Joi.string().allow("").required(),
+          notification_tags: Joi.array().items(Joi.string()).required(),
+          email: Joi.string().email().required(),
+        }),
+      },
+    ],
     summary: "Test of validation endpoint",
   },
   (req: Request, res: Response) => {
@@ -52,25 +59,33 @@ endpointsCollection.post(
   {
     summary: "Test of validation endpoint with jwt verification",
     beforeInput: [jwtVerify("secret")],
+    outputSchema: [
+      {
+        status: 200,
+      },
+    ],
   },
   (req: Request, res: Response) => {
-    return res.json({ id: 1, ...req.body });
+    return res.sendStatus(200);
   },
 );
 
 endpointsCollection.post(
   "/cache",
   {
-    outputSchema: {
-      body: Joi.object({
-        message: Joi.string().required(),
-      }),
-    },
+    outputSchema: [
+      {
+        status: 200,
+        body: Joi.object({
+          message: Joi.string().required(),
+        }),
+      },
+    ],
     summary: "Test of validation endpoint with cache middleware",
     beforeInput: [cache(nodeCacheAdapter)],
   },
   (req: Request, res: Response) => {
-    return res.json({ id: 1, ...req.body });
+    return res.json({ message: "Hello, World!" });
   },
 );
 
@@ -78,6 +93,16 @@ app.use(endpointsCollection.getRouter());
 
 app.get("/api-docs", (req, res) => {
   res.json(endpointsCollection.getEndpoints());
+});
+
+app.get("/openapi", (req, res) => {
+  res.json(
+    generateOpenAPI({
+      title: "API Documentation",
+      version: "1.0.0",
+      endpoints: endpointsCollection.getEndpoints(),
+    }),
+  );
 });
 
 app.listen(port, () => {

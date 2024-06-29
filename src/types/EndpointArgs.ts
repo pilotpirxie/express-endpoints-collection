@@ -4,7 +4,7 @@ import { RequestHandler } from "express";
 
 export type EndpointArgs = {
   inputSchema?: EndpointInputSchema;
-  outputSchema?: EndpointOutputSchema;
+  outputSchema: EndpointOutputSchema;
   summary?: string;
   beforeInput?: RequestHandler | RequestHandler[];
   afterInput?: RequestHandler | RequestHandler[];
