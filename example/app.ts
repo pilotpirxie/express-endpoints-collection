@@ -1,7 +1,11 @@
-import express, { Express } from "express";
+import express, { Express, Request, Response } from "express";
 import bodyParser from "body-parser";
-import { SimpleExpressOpenAPI } from "../src";
+import { EndpointsCollection } from "../src";
 import Joi from "joi";
+import NodeCache from "node-cache";
+import { NodeCacheAdapter } from "./middlewares/cacheStore";
+import cache from "./middlewares/cache";
+import { jwtVerify } from "./middlewares/jwt";
 
 const port = process.env.PORT || 3000;
 const app: Express = express();
@@ -9,13 +13,20 @@ app.set("trust proxy", true);
 app.use(bodyParser.json({ limit: process.env.MAX_BODY_SIZE || "1KB" }));
 app.disable("x-powered-by");
 
-const simpleExpressOpenapiRouter = new SimpleExpressOpenAPI();
-const router = simpleExpressOpenapiRouter.registerRouter(express.Router());
+const nodeCache = new NodeCache({
+  stdTTL: 10,
+  checkperiod: 1,
+});
 
-router.post(
-  "/users",
+const nodeCacheAdapter = new NodeCacheAdapter({
+  nodeCache,
+});
+
+const endpointsCollection = new EndpointsCollection();
+
+endpointsCollection.post(
+  "/validation",
   {
-    // @ts-ignore
     inputSchema: {
       body: Joi.object({
         name: Joi.string().required(),
@@ -29,17 +40,44 @@ router.post(
         email: Joi.string().email().required(),
       }),
     },
-    summary: "Create a new user",
+    summary: "Test of validation endpoint",
   },
-  (req, res) => {
-    res.json({ id: 1, ...req.body });
+  (req: Request, res: Response) => {
+    return res.json({ id: 1, ...req.body });
   },
 );
 
-app.use(router);
+endpointsCollection.post(
+  "/jwt",
+  {
+    summary: "Test of validation endpoint with jwt verification",
+    beforeInput: [jwtVerify("secret")],
+  },
+  (req: Request, res: Response) => {
+    return res.json({ id: 1, ...req.body });
+  },
+);
+
+endpointsCollection.post(
+  "/cache",
+  {
+    outputSchema: {
+      body: Joi.object({
+        message: Joi.string().required(),
+      }),
+    },
+    summary: "Test of validation endpoint with cache middleware",
+    beforeInput: [cache(nodeCacheAdapter)],
+  },
+  (req: Request, res: Response) => {
+    return res.json({ id: 1, ...req.body });
+  },
+);
+
+app.use(endpointsCollection.getRouter());
 
 app.get("/api-docs", (req, res) => {
-  res.json(simpleExpressOpenapiRouter.getEndpoints());
+  res.json(endpointsCollection.getEndpoints());
 });
 
 app.listen(port, () => {

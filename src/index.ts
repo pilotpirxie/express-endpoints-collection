@@ -1,5 +1,11 @@
 import Joi from "joi";
-import { Request, Response, NextFunction, Router } from "express";
+import {
+  Request,
+  Response,
+  NextFunction,
+  Router,
+  RequestHandler,
+} from "express";
 
 type EndpointInputSchema = {
   query?: Joi.Schema;
@@ -28,22 +34,26 @@ const httpMethods = [
 type EndpointInfo = {
   path: string;
   method: (typeof httpMethods)[number];
-  inputSchema: EndpointInputSchema;
-  outputSchema: EndpointOutputSchema;
+  inputSchema?: EndpointInputSchema;
+  outputSchema?: EndpointOutputSchema;
   summary?: string;
 };
 
-export class SimpleExpressOpenAPI {
+type EndpointArgs = {
+  inputSchema?: EndpointInputSchema;
+  outputSchema?: EndpointOutputSchema;
+  summary?: string;
+  beforeInput?: RequestHandler | RequestHandler[];
+  afterInput?: RequestHandler | RequestHandler[];
+  beforeOutput?: RequestHandler | RequestHandler[];
+  afterOutput?: RequestHandler | RequestHandler[];
+};
+
+export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
+  private router = Router();
 
   public constructor() {}
-
-  private collect(endpointInfo: EndpointInfo) {
-    return (req: Request, res: Response, next: NextFunction) => {
-      this.endpoints.push(endpointInfo);
-      next();
-    };
-  }
 
   private static validateInput(schema: EndpointInputSchema) {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -89,43 +99,136 @@ export class SimpleExpressOpenAPI {
     };
   }
 
-  public registerRouter(router: Router) {
-    httpMethods.forEach((method) => {
-      const originalMethod = router[method];
-
-      // @ts-ignore
-      router[method] = (
-        path: string,
-        endpointArgs: {
-          inputSchema: EndpointInputSchema;
-          outputSchema: EndpointOutputSchema;
-          summary?: string;
-        },
-        ...handlers: any[]
-      ) => {
-        this.endpoints.push({
-          path,
-          method,
-          inputSchema: endpointArgs.inputSchema,
-          outputSchema: endpointArgs.outputSchema,
-          summary: endpointArgs.summary,
-        });
-
-        originalMethod.call(
-          router,
-          path,
-          SimpleExpressOpenAPI.validateInput(endpointArgs.inputSchema),
-          // @ts-ignore
-          ...handlers,
-          SimpleExpressOpenAPI.validateOutput(endpointArgs.outputSchema),
-        );
-      };
+  public callOriginal(
+    method: (typeof httpMethods)[number],
+    path: string,
+    {
+      inputSchema,
+      outputSchema,
+      summary,
+      afterOutput = [],
+      beforeOutput = [],
+      afterInput = [],
+      beforeInput = [],
+    }: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    this.endpoints.push({
+      path,
+      method: method,
+      inputSchema,
+      outputSchema,
+      summary,
     });
 
-    return router;
+    const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
+
+    if (beforeInput) {
+      combinedHandlers.push(beforeInput);
+    }
+
+    if (inputSchema) {
+      combinedHandlers.push(EndpointsCollection.validateInput(inputSchema));
+    }
+
+    if (afterInput) {
+      combinedHandlers.push(afterInput);
+    }
+
+    combinedHandlers.push(handlers);
+
+    if (beforeOutput) {
+      combinedHandlers.push(beforeOutput);
+    }
+
+    if (outputSchema) {
+      combinedHandlers.push(EndpointsCollection.validateOutput(outputSchema));
+    }
+
+    if (afterOutput) {
+      combinedHandlers.push(afterOutput);
+    }
+
+    return this.router[method](path, ...combinedHandlers);
+  }
+
+  public get(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("get", path, args, handlers);
+  }
+
+  public post(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("post", path, args, handlers);
+  }
+
+  public put(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("put", path, args, handlers);
+  }
+
+  public delete(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("delete", path, args, handlers);
+  }
+
+  public patch(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("patch", path, args, handlers);
+  }
+
+  public options(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("options", path, args, handlers);
+  }
+
+  public head(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("head", path, args, handlers);
+  }
+
+  public trace(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("trace", path, args, handlers);
+  }
+
+  public connect(
+    path: string,
+    args: EndpointArgs,
+    handlers: RequestHandler | RequestHandler[],
+  ) {
+    return this.callOriginal("connect", path, args, handlers);
   }
 
   public getEndpoints() {
     return this.endpoints;
+  }
+
+  public getRouter() {
+    return this.router;
   }
 }
