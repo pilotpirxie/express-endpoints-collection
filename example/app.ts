@@ -1,7 +1,7 @@
 import express, { Express, Request, Response } from "express";
 import bodyParser from "body-parser";
 import { EndpointsCollection } from "../src";
-import Joi from "joi";
+import { z } from "zod";
 import NodeCache from "node-cache";
 import { NodeCacheAdapter } from "./middlewares/cacheStore";
 import cache from "./middlewares/cache";
@@ -29,30 +29,30 @@ endpointsCollection.post(
   "/validation/:id",
   {
     inputSchema: {
-      body: Joi.object({
-        name: Joi.string().required(),
-        email: Joi.string().email().required(),
+      body: z.object({
+        name: z.string(),
+        email: z.string().email(),
       }),
-      query: Joi.object({
-        category: Joi.string().only().allow("a", "b").optional(),
+      query: z.object({
+        category: z.enum(["a", "b"]).optional(),
       }),
-      params: Joi.object({
-        id: Joi.number().required(),
+      params: z.object({
+        id: z.number(),
       }),
-      headers: Joi.object({
-        authorization: Joi.string().required(),
+      headers: z.object({
+        authorization: z.string(),
       }),
     },
     outputSchema: [
       {
         status: 200,
-        body: Joi.object({
-          id: Joi.number().required(),
-          token: Joi.string().required(),
-          notification_push_token: Joi.string().allow("").required(),
-          notification_user_id: Joi.string().allow("").required(),
-          notification_tags: Joi.array().items(Joi.string()).required(),
-          email: Joi.string().email().required(),
+        body: z.object({
+          id: z.number(),
+          token: z.string(),
+          notification_push_token: z.string(),
+          notification_user_id: z.string(),
+          notification_tags: z.array(z.string()),
+          email: z.string().email(),
         }),
       },
     ],
@@ -63,7 +63,7 @@ endpointsCollection.post(
   },
 );
 
-endpointsCollection.post(
+endpointsCollection.get(
   "/jwt",
   {
     summary: "Test of validation endpoint with jwt verification",
@@ -85,8 +85,8 @@ endpointsCollection.post(
     outputSchema: [
       {
         status: 200,
-        body: Joi.object({
-          message: Joi.string().required(),
+        body: z.object({
+          message: z.string(),
         }),
       },
     ],

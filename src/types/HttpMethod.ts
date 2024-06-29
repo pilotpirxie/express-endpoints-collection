@@ -6,5 +6,4 @@ export type HttpMethod =
   | "patch"
   | "options"
   | "head"
-  | "trace"
-  | "connect";
+  | "trace";

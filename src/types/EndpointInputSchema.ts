@@ -1,8 +1,8 @@
-import Joi from "joi";
+import { z } from "zod";
 
 export type EndpointInputSchema = {
-  query?: Joi.Schema;
-  body?: Joi.Schema;
-  params?: Joi.Schema;
-  headers?: Joi.Schema;
+  query?: z.ZodObject<any>;
+  body?: z.ZodObject<any>;
+  params?: z.ZodObject<any>;
+  headers?: z.ZodObject<any>;
 };

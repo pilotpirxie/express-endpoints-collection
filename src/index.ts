@@ -10,6 +10,7 @@ import { EndpointOutputSchema } from "./types/EndpointOutputSchema";
 import { EndpointInfo } from "./types/EndpointInfo";
 import { EndpointArgs } from "./types/EndpointArgs";
 import { HttpMethod } from "./types/HttpMethod";
+import { z } from "zod";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
@@ -19,20 +20,20 @@ export class EndpointsCollection {
 
   private static validateInput(schema: EndpointInputSchema) {
     return (req: Request, res: Response, next: NextFunction) => {
-      const { error: queryError } = schema.query?.validate(req.query) || {};
-      const { error: bodyError } = schema.body?.validate(req.body) || {};
-      const { error: paramsError } = schema.params?.validate(req.params) || {};
-      const { error: headersError } =
-        schema.headers?.validate(req.headers) || {};
-
-      const error = queryError || bodyError || paramsError || headersError;
-      if (error) {
-        return res.status(400).json({
-          error: error.message,
-        });
+      try {
+        if (schema.query) schema.query.parse(req.query);
+        if (schema.body) schema.body.parse(req.body);
+        if (schema.params) schema.params.parse(req.params);
+        if (schema.headers) schema.headers.parse(req.headers);
+        next();
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            error: error.errors,
+          });
+        }
+        next(error);
       }
-
-      next();
     };
   }
 
@@ -44,17 +45,21 @@ export class EndpointsCollection {
       res.json = (body: any) => {
         const status = res.statusCode;
         const schemaForStatus = schema.find((s) => s.status === status);
-        const { error: bodyError } =
-          schemaForStatus?.body?.validate(body) || {};
 
-        if (bodyError) {
-          console.error("Error in response validation", bodyError.message);
-          return res.status(500).json({
-            error: "Internal server error",
-          });
+        try {
+          if (schemaForStatus?.body) {
+            schemaForStatus.body.parse(body);
+          }
+          originalJson.call(res, body);
+        } catch (error) {
+          if (error instanceof z.ZodError) {
+            console.error("Error in response validation", error.errors);
+            return res.status(500).json({
+              error: "Internal server error",
+            });
+          }
+          next(error);
         }
-
-        originalJson.call(res, body);
       };
 
       next();
@@ -176,14 +181,6 @@ export class EndpointsCollection {
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("trace", path, args, handlers);
-  }
-
-  public connect(
-    path: string,
-    args: EndpointArgs,
-    handlers: RequestHandler | RequestHandler[],
-  ) {
-    return this.callOriginal("connect", path, args, handlers);
   }
 
   public getEndpoints() {

@@ -1,7 +1,7 @@
-import Joi from "joi";
+import { z } from "zod";
 
 export type EndpointOutputSchema = {
   status: number;
   description?: string;
-  body?: Joi.Schema;
+  body?: z.ZodType;
 }[];
