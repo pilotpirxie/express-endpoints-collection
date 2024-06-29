@@ -12,6 +12,32 @@ import { EndpointArgs } from "./types/EndpointArgs";
 import { HttpMethod } from "./types/HttpMethod";
 import { z } from "zod";
 
+type TypedRequestHandler<
+  TInput extends EndpointInputSchema,
+  TOutput extends EndpointOutputSchema,
+> = (
+  req: TypedRequest<TInput>,
+  res: TypedResponse<TOutput>,
+) => void | Promise<void>;
+
+type TypedRequest<T extends EndpointInputSchema> = {
+  body: z.infer<NonNullable<T["body"]>>;
+  query: z.infer<NonNullable<T["query"]>>;
+  params: z.infer<NonNullable<T["params"]>>;
+  headers: z.infer<NonNullable<T["headers"]>>;
+};
+
+type TypedResponse<T extends EndpointOutputSchema> = {
+  json: (data: z.infer<NonNullable<T[number]["body"]>>) => void;
+  status: <S extends T[number]["status"]>(
+    code: S,
+  ) => Omit<TypedResponse<T>, "status"> & {
+    json: (
+      data: z.infer<NonNullable<Extract<T[number], { status: S }>["body"]>>,
+    ) => void;
+  };
+};
+
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
   private router = Router();
@@ -77,7 +103,7 @@ export class EndpointsCollection {
       beforeOutput = [],
       afterInput = [],
       beforeInput = [],
-    }: EndpointArgs,
+    }: EndpointArgs<EndpointInputSchema, EndpointOutputSchema>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     this.endpoints.push({
@@ -119,65 +145,89 @@ export class EndpointsCollection {
     return this.router[method](path, ...combinedHandlers);
   }
 
-  public get(
+  public get<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
+    args: EndpointArgs<TInput, TOutput>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("get", path, args, handlers);
   }
 
-  public post(
+  public post<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
-    handlers: RequestHandler | RequestHandler[],
+    args: EndpointArgs<TInput, TOutput>,
+    handler: TypedRequestHandler<TInput, TOutput>,
   ) {
-    return this.callOriginal("post", path, args, handlers);
+    return this.callOriginal("post", path, args, handler);
   }
 
-  public put(
+  public put<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
+    args: EndpointArgs<TInput, TOutput>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("put", path, args, handlers);
   }
 
-  public delete(
+  public delete<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
+    args: EndpointArgs<TInput, TOutput>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("delete", path, args, handlers);
   }
 
-  public patch(
+  public patch<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
+    args: EndpointArgs<TInput, TOutput>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("patch", path, args, handlers);
   }
 
-  public options(
+  public options<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
+    args: EndpointArgs<TInput, TOutput>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("options", path, args, handlers);
   }
 
-  public head(
+  public head<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
+    args: EndpointArgs<TInput, TOutput>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("head", path, args, handlers);
   }
 
-  public trace(
+  public trace<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     path: string,
-    args: EndpointArgs,
+    args: EndpointArgs<TInput, TOutput>,
     handlers: RequestHandler | RequestHandler[],
   ) {
     return this.callOriginal("trace", path, args, handlers);

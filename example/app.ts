@@ -25,41 +25,52 @@ const nodeCacheAdapter = new NodeCacheAdapter({
 
 const endpointsCollection = new EndpointsCollection();
 
+const input = {
+  body: z.object({
+    name: z.string(),
+    email: z.string().email(),
+  }),
+  query: z.object({
+    category: z.enum(["a", "b"]).optional(),
+  }),
+  params: z.object({
+    id: z.number(),
+  }),
+  headers: z.object({
+    authorization: z.string(),
+  }),
+};
+
+const output = [
+  {
+    status: 200,
+    body: z.object({
+      id: z.number(),
+      token: z.string(),
+      value_c: z.string(),
+      value_d: z.string(),
+      value_e: z.array(z.string()),
+      email: z.string().email(),
+    }),
+  },
+];
+
 endpointsCollection.post(
   "/validation/:id",
   {
-    inputSchema: {
-      body: z.object({
-        name: z.string(),
-        email: z.string().email(),
-      }),
-      query: z.object({
-        category: z.enum(["a", "b"]).optional(),
-      }),
-      params: z.object({
-        id: z.number(),
-      }),
-      headers: z.object({
-        authorization: z.string(),
-      }),
-    },
-    outputSchema: [
-      {
-        status: 200,
-        body: z.object({
-          id: z.number(),
-          token: z.string(),
-          notification_push_token: z.string(),
-          notification_user_id: z.string(),
-          notification_tags: z.array(z.string()),
-          email: z.string().email(),
-        }),
-      },
-    ],
+    inputSchema: input,
+    outputSchema: output,
     summary: "Test of validation endpoint",
   },
-  (req: Request, res: Response) => {
-    return res.json({ id: 1, ...req.body });
+  (req, res) => {
+    return res.json({
+      id: 1,
+      token: "token",
+      email: "test",
+      value_c: "push_token",
+      value_e: ["tag1", "tag2"],
+      value_d: "user_id",
+    });
   },
 );
 
@@ -93,7 +104,7 @@ endpointsCollection.post(
     summary: "Test of validation endpoint with cache middleware",
     beforeInput: [cache(nodeCacheAdapter)],
   },
-  (req: Request, res: Response) => {
+  (req, res) => {
     return res.json({ message: "Hello, World!" });
   },
 );
