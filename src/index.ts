@@ -1,4 +1,3 @@
-import Joi from "joi";
 import {
   Request,
   Response,
@@ -6,48 +5,11 @@ import {
   Router,
   RequestHandler,
 } from "express";
-
-type EndpointInputSchema = {
-  query?: Joi.Schema;
-  body?: Joi.Schema;
-  params?: Joi.Schema;
-  headers?: Joi.Schema;
-};
-
-type EndpointOutputSchema = {
-  body: Joi.Schema;
-  headers?: Joi.Schema;
-};
-
-const httpMethods = [
-  "get",
-  "post",
-  "put",
-  "delete",
-  "patch",
-  "options",
-  "head",
-  "trace",
-  "connect",
-] as const;
-
-type EndpointInfo = {
-  path: string;
-  method: (typeof httpMethods)[number];
-  inputSchema?: EndpointInputSchema;
-  outputSchema?: EndpointOutputSchema;
-  summary?: string;
-};
-
-type EndpointArgs = {
-  inputSchema?: EndpointInputSchema;
-  outputSchema?: EndpointOutputSchema;
-  summary?: string;
-  beforeInput?: RequestHandler | RequestHandler[];
-  afterInput?: RequestHandler | RequestHandler[];
-  beforeOutput?: RequestHandler | RequestHandler[];
-  afterOutput?: RequestHandler | RequestHandler[];
-};
+import { EndpointInputSchema } from "./types/EndpointInputSchema";
+import { EndpointOutputSchema } from "./types/EndpointOutputSchema";
+import { EndpointInfo } from "./types/EndpointInfo";
+import { EndpointArgs } from "./types/EndpointArgs";
+import { HttpMethod } from "./types/HttpMethod";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
@@ -100,7 +62,7 @@ export class EndpointsCollection {
   }
 
   public callOriginal(
-    method: (typeof httpMethods)[number],
+    method: HttpMethod,
     path: string,
     {
       inputSchema,
