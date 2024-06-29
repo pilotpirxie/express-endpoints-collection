@@ -26,12 +26,21 @@ const nodeCacheAdapter = new NodeCacheAdapter({
 const endpointsCollection = new EndpointsCollection();
 
 endpointsCollection.post(
-  "/validation",
+  "/validation/:id",
   {
     inputSchema: {
       body: Joi.object({
         name: Joi.string().required(),
         email: Joi.string().email().required(),
+      }),
+      query: Joi.object({
+        category: Joi.string().only().allow("a", "b").optional(),
+      }),
+      params: Joi.object({
+        id: Joi.number().required(),
+      }),
+      headers: Joi.object({
+        authorization: Joi.string().required(),
       }),
     },
     outputSchema: [

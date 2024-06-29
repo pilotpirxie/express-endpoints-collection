@@ -129,7 +129,9 @@ export function generateOpenAPI({
     }
 
     pathItem[endpoint.method] = operation;
-    paths[endpoint.path] = pathItem;
+
+    const path = endpoint.path.replace(/:(\w+)/g, "{$1}");
+    paths[path] = pathItem;
   });
 
   return {
@@ -146,14 +148,15 @@ function convertJoiToParameters(
   schema: Joi.ObjectSchema | Joi.Schema,
   parameterType: "query" | "header" | "path" | "cookie",
 ): ParameterObject[] {
+  console.log(schema.type, JSON.stringify(schema));
   return Object.entries(schema.describe().keys).map(([key, value]) => {
-    const required = schema.describe().keys.required.includes(key);
+    const required = schema.describe().keys.required?.includes(key);
     const valueTyped = value as Joi.Schema;
 
     return {
       name: key,
       in: parameterType,
-      required,
+      required: parameterType === "path" ? true : required,
       schema: convertJoiToJsonSchema(valueTyped),
     };
   });
