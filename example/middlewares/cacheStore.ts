@@ -1,4 +1,4 @@
-import NodeCache from 'node-cache';
+import NodeCache from "node-cache";
 
 export interface CacheStore {
   get(key: string): any;
@@ -9,9 +9,7 @@ export interface CacheStore {
 export class NodeCacheAdapter implements CacheStore {
   private nodeCache: NodeCache | null = null;
 
-  constructor({ nodeCache }: {
-    nodeCache: NodeCache
-  }) {
+  constructor({ nodeCache }: { nodeCache: NodeCache }) {
     this.nodeCache = nodeCache;
   }
 

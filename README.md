@@ -12,15 +12,16 @@ You can configure exposed endpoints, request and response schemas, and validatio
 
 ## Features
 
-* Fully typed endpoints (TypeScript hints and checks)
-  * Request body
-  * Response body
-  * Query parameters
-  * Path parameters
-  * Headers
-* Automatic OpenAPI 3 schema generation
-* Request and response validation using Zod
-* Minimal setup
+- Fully typed endpoints (TypeScript hints and checks)
+  - Request body
+  - Response body
+  - Query parameters
+  - Path parameters
+  - Headers
+- Automatic OpenAPI 3 schema generation
+- Request and response validation using Zod
+- Middleware support
+- Minimal setup
 
 ## Installation
 
@@ -127,7 +128,7 @@ paths:
                 - a
                 - b
       responses:
-        '200':
+        "200":
           description: Response for status code 200
           content:
             application/json:
@@ -170,10 +171,7 @@ or as JSON
                     "type": "number"
                   }
                 },
-                "required": [
-                  "a",
-                  "b"
-                ]
+                "required": ["a", "b"]
               }
             }
           }
@@ -190,9 +188,7 @@ or as JSON
                       "type": "number"
                     }
                   },
-                  "required": [
-                    "result"
-                  ]
+                  "required": ["result"]
                 }
               }
             }
@@ -215,4 +211,5 @@ Type inference and checks:
 ![infer1](./img/infer1.png)
 
 ### License
+
 MIT

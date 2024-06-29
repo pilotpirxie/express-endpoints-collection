@@ -1,6 +1,6 @@
 {
   "name": "express-endpoints-collection",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "./dist/index.js",
   "repository": "https://github.com/pilotpirxie/express-endpoints-collection.git",
   "author": "pilotpirxie <10637666+pilotpirxie@users.noreply.github.com>",
@@ -30,5 +30,23 @@
   },
   "files": [
     "dist"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "express",
+    "endpoints",
+    "collection",
+    "api",
+    "rest",
+    "restful",
+    "openapi",
+    "swagger",
+    "zod",
+    "typescript",
+    "ts",
+    "validation",
+    "inference"
   ]
 }
