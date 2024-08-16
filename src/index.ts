@@ -74,10 +74,9 @@ export class EndpointsCollection {
       inputSchema,
       outputSchema,
       summary,
-      afterOutput = [],
-      beforeOutput = [],
-      afterInput = [],
-      beforeInput = [],
+      beforeResponse = [],
+      afterInputValidation = [],
+      beforeInputValidation = [],
     }: EndpointArgs<EndpointInputSchema, EndpointOutputSchema>,
     handlers: RequestHandler | RequestHandler[] | TypedRequestHandler<any, any>,
   ) {
@@ -91,30 +90,26 @@ export class EndpointsCollection {
 
     const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
 
-    if (beforeInput) {
-      combinedHandlers.push(beforeInput);
+    if (beforeInputValidation) {
+      combinedHandlers.push(beforeInputValidation);
     }
 
     if (inputSchema) {
       combinedHandlers.push(EndpointsCollection.validateInput(inputSchema));
     }
 
-    if (afterInput) {
-      combinedHandlers.push(afterInput);
+    if (afterInputValidation) {
+      combinedHandlers.push(afterInputValidation);
     }
 
     combinedHandlers.push(handlers);
-
-    if (beforeOutput) {
-      combinedHandlers.push(beforeOutput);
-    }
 
     if (outputSchema) {
       combinedHandlers.push(EndpointsCollection.validateOutput(outputSchema));
     }
 
-    if (afterOutput) {
-      combinedHandlers.push(afterOutput);
+    if (beforeResponse) {
+      combinedHandlers.push(beforeResponse);
     }
 
     return this.router[method](path, ...combinedHandlers);

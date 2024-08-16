@@ -9,8 +9,7 @@ export type EndpointArgs<
   inputSchema?: TInput;
   outputSchema: TOutput;
   summary?: string;
-  beforeInput?: RequestHandler | RequestHandler[];
-  afterInput?: RequestHandler | RequestHandler[];
-  beforeOutput?: RequestHandler | RequestHandler[];
-  afterOutput?: RequestHandler | RequestHandler[];
+  beforeInputValidation?: RequestHandler | RequestHandler[];
+  afterInputValidation?: RequestHandler | RequestHandler[];
+  beforeResponse?: RequestHandler | RequestHandler[];
 };

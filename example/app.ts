@@ -121,7 +121,7 @@ endpointsCollection.get(
       },
     ],
     summary: "Get user profile",
-    beforeInput: [jwtVerify("your_jwt_secret")],
+    beforeInputValidation: [jwtVerify("your_jwt_secret")],
   },
   (req, res) => {
     const userId = parseInt(req.params.id);
@@ -165,7 +165,7 @@ endpointsCollection.put(
       },
     ],
     summary: "Update user profile",
-    beforeInput: [jwtVerify("your_jwt_secret")],
+    beforeInputValidation: [jwtVerify("your_jwt_secret")],
   },
   (req, res) => {
     const userId = parseInt(req.params.id);
@@ -197,7 +197,7 @@ endpointsCollection.get(
       },
     ],
     summary: "Get posts with pagination",
-    beforeInput: [cache(nodeCacheAdapter)],
+    beforeInputValidation: [cache(nodeCacheAdapter)],
   },
   (req, res) => {
     const limit = parseInt(req.query.limit as string) || 10;
@@ -272,7 +272,7 @@ endpointsCollection.post(
       },
     ],
     summary: "Register a new user with complex profile",
-    beforeInput: [logRequest],
+    beforeInputValidation: [logRequest],
   },
   (req, res) => {
     const { username, email, profile } = req.body;
@@ -348,7 +348,7 @@ endpointsCollection.get(
       },
     ],
     summary: "Advanced product search",
-    beforeInput: [cache(nodeCacheAdapter)],
+    beforeInputValidation: [cache(nodeCacheAdapter)],
   },
   (req, res) => {
     const products = Array.from({ length: 10 }, (_, i) => ({
@@ -410,7 +410,7 @@ endpointsCollection.post(
       },
     ],
     summary: "Upload multiple files",
-    beforeInput: [jwtVerify("your_jwt_secret")],
+    beforeInputValidation: [jwtVerify("your_jwt_secret")],
   },
   (req, res) => {
     const { files } = req.body;
@@ -463,7 +463,7 @@ endpointsCollection.post(
       },
     ],
     summary: "Receive payment webhook",
-    beforeInput: [validateWebhook],
+    beforeInputValidation: [validateWebhook],
   },
   (req, res) => {
     const { event, paymentId } = req.body;
