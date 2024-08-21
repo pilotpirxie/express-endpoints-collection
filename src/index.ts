@@ -26,7 +26,7 @@ export class EndpointsCollection {
   }: {
     collectionPrefix?: string;
     customErrorHandler?: CustomErrorHandler;
-  }) {
+  } = {}) {
     this.collectionPrefix = collectionPrefix;
     this.customErrorHandler = customErrorHandler;
   }
@@ -75,18 +75,7 @@ export class EndpointsCollection {
         schema.shape[key],
         deepClone[key],
       );
-      console.info(
-        "Coercing key",
-        key,
-        "from",
-        deepClone[key],
-        "to",
-        coerced.data,
-        "with schema",
-        schema.shape[key],
-        "result",
-        coerced,
-      );
+
       deepClone[key] = coerced.success ? coerced.data : data[key];
     }
     return deepClone;

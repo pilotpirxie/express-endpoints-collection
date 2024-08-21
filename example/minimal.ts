@@ -7,7 +7,7 @@ import { generateOpenAPI } from "../src/generator";
 const app: Express = express();
 app.use(bodyParser.json());
 
-const endpointsCollection = new EndpointsCollection({});
+const endpointsCollection = new EndpointsCollection();
 
 endpointsCollection.post(
   "/add",
