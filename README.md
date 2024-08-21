@@ -85,11 +85,13 @@ app.use(endpointsCollection.getRouter());
 
 // 6. Expose OpenAPI 3 schema
 app.get("/openapi", (req, res) => {
-  res.json(
+  res.setHeader("Content-Type", "text/yaml");
+  res.send(
     generateOpenAPI({
       title: "Minimal demo",
       version: "1.0.0",
       endpoints: endpointsCollection.getEndpoints(),
+      servers: ["http://localhost:3000"],
     }),
   );
 });

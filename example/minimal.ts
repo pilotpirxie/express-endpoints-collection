@@ -37,7 +37,8 @@ endpointsCollection.post(
 app.use(endpointsCollection.getRouter());
 
 app.get("/openapi", (req, res) => {
-  res.json(
+  res.setHeader("Content-Type", "text/yaml");
+  return res.send(
     generateOpenAPI({
       title: "Minimal demo",
       version: "1.0.0",
