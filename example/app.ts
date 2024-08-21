@@ -18,7 +18,7 @@ app.disable("x-powered-by");
 const nodeCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 const nodeCacheAdapter = new NodeCacheAdapter({ nodeCache });
 
-const endpointsCollection = new EndpointsCollection();
+const endpointsCollection = new EndpointsCollection({});
 
 const logRequest = (req: Request, res: Response, next: Function) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -482,6 +482,7 @@ app.get("/openapi", (req, res) => {
       title: "Advanced API Documentation",
       version: "1.0.0",
       endpoints: endpointsCollection.getEndpoints(),
+      servers: ["http://localhost:3000"],
     }),
   );
 });

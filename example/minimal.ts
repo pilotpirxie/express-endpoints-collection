@@ -7,7 +7,7 @@ import { generateOpenAPI } from "../src/generator";
 const app: Express = express();
 app.use(bodyParser.json());
 
-const endpointsCollection = new EndpointsCollection();
+const endpointsCollection = new EndpointsCollection({});
 
 endpointsCollection.post(
   "/add",
@@ -42,6 +42,7 @@ app.get("/openapi", (req, res) => {
       title: "Minimal demo",
       version: "1.0.0",
       endpoints: endpointsCollection.getEndpoints(),
+      servers: ["http://localhost:3000"],
     }),
   );
 });

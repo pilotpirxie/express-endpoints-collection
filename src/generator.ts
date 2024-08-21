@@ -6,6 +6,7 @@ import {
   OpenApiGeneratorV3,
 } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
+import yaml from "js-yaml";
 
 extendZodWithOpenApi(z);
 
@@ -14,11 +15,13 @@ export function generateOpenAPI({
   version,
   endpoints,
   servers,
+  asJson,
 }: {
   title: string;
   version: string;
   endpoints: EndpointInfo[];
   servers: string[];
+  asJson?: boolean;
 }) {
   const registry = new OpenAPIRegistry();
 
@@ -63,7 +66,7 @@ export function generateOpenAPI({
 
   const generator = new OpenApiGeneratorV3(registry.definitions);
 
-  return generator.generateDocument({
+  const jsonDocument = generator.generateDocument({
     openapi: "3.0.0",
     info: {
       title,
@@ -71,4 +74,6 @@ export function generateOpenAPI({
     },
     servers: servers.map((url) => ({ url })),
   });
+
+  return asJson ? jsonDocument : yaml.dump(jsonDocument);
 }

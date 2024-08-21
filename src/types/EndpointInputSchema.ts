@@ -1,8 +1,8 @@
-import { z } from "zod";
+import { AnyZodObject } from "zod";
 
 export type EndpointInputSchema = {
-  query?: z.ZodObject<any>;
-  body?: z.ZodObject<any>;
-  params?: z.ZodObject<any>;
-  headers?: z.ZodObject<any>;
+  query?: AnyZodObject;
+  body?: AnyZodObject;
+  params?: AnyZodObject;
+  headers?: AnyZodObject;
 };
