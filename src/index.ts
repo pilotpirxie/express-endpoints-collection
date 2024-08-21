@@ -13,6 +13,8 @@ import { HttpMethod } from "./types/HttpMethod";
 import { AnyZodObject, z } from "zod";
 import { TypedRequestHandler } from "./types/TypedRequestHandler";
 import { CustomErrorHandler } from "./types/CustomErrorHandler";
+import { ParamsDictionary, Query } from "express-serve-static-core";
+import { IncomingHttpHeaders } from "http";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
@@ -35,7 +37,7 @@ export class EndpointsCollection {
     return (req: Request, res: Response, next: NextFunction) => {
       try {
         if (schema.query) {
-          req.query = this.coerceAll(schema.query, req.query);
+          req.query = this.coerceAll(schema.query, req.query) as Query;
           req.query = schema.query.parse(req.query);
         }
         if (schema.body) {
@@ -43,11 +45,17 @@ export class EndpointsCollection {
           req.body = schema.body.parse(req.body);
         }
         if (schema.params) {
-          req.params = this.coerceAll(schema.params, req.params);
+          req.params = this.coerceAll(
+            schema.params,
+            req.params,
+          ) as ParamsDictionary;
           req.params = schema.params.parse(req.params);
         }
         if (schema.headers) {
-          req.headers = this.coerceAll(schema.headers, req.headers);
+          req.headers = this.coerceAll(
+            schema.headers,
+            req.headers,
+          ) as IncomingHttpHeaders;
           req.headers = schema.headers.parse(req.headers);
         }
         next();
@@ -69,20 +77,17 @@ export class EndpointsCollection {
   }
 
   private coerceAll(schema: AnyZodObject, data: any) {
-    const deepClone = structuredClone(data);
+    const deepClone: Record<string, unknown> = {};
     for (const key in schema.shape) {
-      const coerced = EndpointsCollection.coerceOnly(
-        schema.shape[key],
-        deepClone[key],
-      );
+      const coerced = this.coerceOnly(schema.shape[key], data[key]);
 
       deepClone[key] = coerced.success ? coerced.data : data[key];
     }
     return deepClone;
   }
 
-  private static coerceOnly<T extends z.ZodTypeAny>(
-    schema: T,
+  private coerceOnly(
+    schema: z.ZodTypeAny,
     value: unknown,
   ): z.SafeParseReturnType<any, any> {
     if (schema instanceof z.ZodString) {
