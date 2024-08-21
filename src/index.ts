@@ -89,7 +89,7 @@ export class EndpointsCollection {
   private coerceOnly(
     schema: z.ZodTypeAny,
     value: unknown,
-  ): z.SafeParseReturnType<any, any> {
+  ): z.SafeParseReturnType<unknown, unknown> {
     if (schema instanceof z.ZodString) {
       return z.coerce.string().safeParse(value);
     } else if (schema instanceof z.ZodNumber) {
@@ -116,7 +116,7 @@ export class EndpointsCollection {
       return z.array(z.any()).safeParse(value);
     } else if (schema instanceof z.ZodObject) {
       if (typeof value === "object" && value !== null) {
-        const coercedObject: Record<string, any> = {};
+        const coercedObject: Record<string, unknown> = {};
         for (const [key, propertySchema] of Object.entries(schema.shape)) {
           const propertyValue = (value as any)[key];
           const coercedProperty = this.coerceOnly(
@@ -135,7 +135,10 @@ export class EndpointsCollection {
     }
   }
 
-  public callOriginal(
+  public callOriginal<
+    TInput extends EndpointInputSchema,
+    TOutput extends EndpointOutputSchema,
+  >(
     method: HttpMethod,
     path: string,
     {
@@ -146,7 +149,10 @@ export class EndpointsCollection {
       afterInputValidation = [],
       beforeInputValidation = [],
     }: EndpointArgs<EndpointInputSchema, EndpointOutputSchema>,
-    handlers: RequestHandler | RequestHandler[] | TypedRequestHandler<any, any>,
+    handlers:
+      | RequestHandler
+      | RequestHandler[]
+      | TypedRequestHandler<TInput, TOutput>,
   ) {
     const pathToUse = this.collectionPrefix
       ? `${this.collectionPrefix}${path}`
