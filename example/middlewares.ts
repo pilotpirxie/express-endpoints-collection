@@ -3,6 +3,7 @@ import bodyParser from "body-parser";
 import { z } from "zod";
 import { EndpointsCollection, TypedRequest, TypedResponse } from "../src";
 import { generateOpenAPI } from "../src/generator";
+import { jwtVerify } from "./middlewares/jwt";
 
 const app: Express = express();
 app.use(bodyParser.json());
@@ -34,16 +35,19 @@ endpointsCollection.post(
     inputSchema: input,
     outputSchema: output,
     summary: "Add two numbers",
-    afterInputValidation: (
-      req: TypedRequest<typeof input>,
-      res: TypedResponse<typeof output>,
-      next: NextFunction,
-    ) => {
-      const { a, b } = req.body;
-      res.json({
-        result: a + b,
-      });
-    },
+    afterInputValidation: [
+      jwtVerify("secret"),
+      (
+        req: TypedRequest<typeof input>,
+        res: TypedResponse<typeof output>,
+        next: NextFunction,
+      ) => {
+        const { a, b } = req.body;
+        res.json({
+          result: a + b,
+        });
+      },
+    ],
   },
   (req, res) => {
     const { a, b } = req.body;

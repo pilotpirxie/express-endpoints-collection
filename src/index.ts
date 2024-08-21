@@ -174,7 +174,7 @@ export class EndpointsCollection {
     const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
 
     if (beforeInputValidation) {
-      combinedHandlers.push(beforeInputValidation);
+      combinedHandlers.push(...beforeInputValidation);
     }
 
     if (inputSchema) {
@@ -182,13 +182,13 @@ export class EndpointsCollection {
     }
 
     if (afterInputValidation) {
-      combinedHandlers.push(afterInputValidation);
+      combinedHandlers.push(...afterInputValidation);
     }
 
     combinedHandlers.push(handler);
 
     if (beforeResponse) {
-      combinedHandlers.push(beforeResponse);
+      combinedHandlers.push(...beforeResponse);
     }
 
     return this.router[method](pathToUse, ...combinedHandlers);

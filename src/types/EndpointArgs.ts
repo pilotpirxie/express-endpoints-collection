@@ -9,19 +9,22 @@ export type EndpointArgs<
   inputSchema?: TInput;
   outputSchema: TOutput;
   summary?: string;
-  beforeInputValidation?:
+  beforeInputValidation?: (
     | RequestHandler
     | RequestHandler[]
     | TypedRequestHandler<TInput, TOutput>
-    | TypedRequestHandler<TInput, TOutput>[];
-  afterInputValidation?:
+    | TypedRequestHandler<TInput, TOutput>[]
+  )[];
+  afterInputValidation?: (
     | RequestHandler
     | RequestHandler[]
     | TypedRequestHandler<TInput, TOutput>
-    | TypedRequestHandler<TInput, TOutput>[];
-  beforeResponse?:
+    | TypedRequestHandler<TInput, TOutput>[]
+  )[];
+  beforeResponse?: (
     | RequestHandler
     | RequestHandler[]
     | TypedRequestHandler<TInput, TOutput>
-    | TypedRequestHandler<TInput, TOutput>[];
+    | TypedRequestHandler<TInput, TOutput>[]
+  )[];
 };
