@@ -5,16 +5,18 @@ import {
   Router,
   RequestHandler,
 } from "express";
-import { EndpointInputSchema } from "./types/EndpointInputSchema";
-import { EndpointOutputSchema } from "./types/EndpointOutputSchema";
-import { EndpointInfo } from "./types/EndpointInfo";
-import { EndpointArgs } from "./types/EndpointArgs";
+import {
+  EndpointInfo,
+  EndpointInputSchema,
+  EndpointOutputSchema,
+} from "./types/EndpointInfo";
 import { HttpMethod } from "./types/HttpMethod";
 import { AnyZodObject, z } from "zod";
-import { TypedRequestHandler } from "./types/TypedRequestHandler";
 import { CustomErrorHandler } from "./types/CustomErrorHandler";
 import { ParamsDictionary, Query } from "express-serve-static-core";
 import { IncomingHttpHeaders } from "http";
+import { TypedRequestHandler } from "./types/TypedRequestHandler";
+import { EndpointArgs } from "./types/EndpointArgs";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
@@ -145,14 +147,11 @@ export class EndpointsCollection {
       inputSchema,
       outputSchema,
       summary,
-      beforeResponse = [],
-      afterInputValidation = [],
       beforeInputValidation = [],
-    }: EndpointArgs<EndpointInputSchema, EndpointOutputSchema>,
-    handlers:
-      | RequestHandler
-      | RequestHandler[]
-      | TypedRequestHandler<TInput, TOutput>,
+      afterInputValidation = [],
+      beforeResponse = [],
+    }: EndpointArgs<TInput, TOutput>,
+    handlers: RequestHandler | TypedRequestHandler<TInput, TOutput>,
   ) {
     const pathToUse = this.collectionPrefix
       ? `${this.collectionPrefix}${path}`
@@ -166,10 +165,13 @@ export class EndpointsCollection {
       summary,
     });
 
-    const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
+    const combinedHandlers: (
+      | RequestHandler
+      | TypedRequestHandler<TInput, TOutput>
+    )[] = [];
 
     if (beforeInputValidation) {
-      combinedHandlers.push(beforeInputValidation);
+      combinedHandlers.push(...beforeInputValidation);
     }
 
     if (inputSchema) {
@@ -177,13 +179,13 @@ export class EndpointsCollection {
     }
 
     if (afterInputValidation) {
-      combinedHandlers.push(afterInputValidation);
+      combinedHandlers.push(...afterInputValidation);
     }
 
     combinedHandlers.push(handlers);
 
     if (beforeResponse) {
-      combinedHandlers.push(beforeResponse);
+      combinedHandlers.push(...beforeResponse);
     }
 
     return this.router[method](pathToUse, ...combinedHandlers);

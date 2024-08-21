@@ -1,6 +1,6 @@
-import { EndpointInputSchema } from "./EndpointInputSchema";
-import { EndpointOutputSchema } from "./EndpointOutputSchema";
 import { RequestHandler } from "express";
+import { EndpointInputSchema, EndpointOutputSchema } from "./EndpointInfo";
+import { TypedRequestHandler } from "./TypedRequestHandler";
 
 export type EndpointArgs<
   TInput extends EndpointInputSchema,
@@ -9,7 +9,11 @@ export type EndpointArgs<
   inputSchema?: TInput;
   outputSchema: TOutput;
   summary?: string;
-  beforeInputValidation?: RequestHandler | RequestHandler[];
-  afterInputValidation?: RequestHandler | RequestHandler[];
-  beforeResponse?: RequestHandler | RequestHandler[];
+  beforeInputValidation?:
+    | RequestHandler[]
+    | TypedRequestHandler<TInput, TOutput>[];
+  afterInputValidation?:
+    | RequestHandler[]
+    | TypedRequestHandler<TInput, TOutput>[];
+  beforeResponse?: RequestHandler[] | TypedRequestHandler<TInput, TOutput>[];
 };
