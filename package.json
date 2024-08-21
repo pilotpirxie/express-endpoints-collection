@@ -22,6 +22,7 @@
     "prettier": "prettier --write .",
     "dev": "ts-node ./example/app.ts",
     "minimal": "ts-node ./example/minimal.ts",
+    "middlewares": "ts-node ./example/middlewares.ts",
     "build": "tsc",
     "prepare": "tsc"
   },

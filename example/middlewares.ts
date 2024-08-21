@@ -1,34 +1,49 @@
-import express, { Express } from "express";
+import express, { Express, NextFunction } from "express";
 import bodyParser from "body-parser";
 import { z } from "zod";
 import { EndpointsCollection, TypedRequest, TypedResponse } from "../src";
 import { generateOpenAPI } from "../src/generator";
-import { jwtVerify } from "./middlewares/jwt";
 
 const app: Express = express();
 app.use(bodyParser.json());
 
 const endpointsCollection = new EndpointsCollection();
 
+const input = {
+  body: z.object({
+    a: z.number(),
+    b: z.number(),
+  }),
+  query: z.object({
+    id: z.string(),
+  }),
+};
+
+const output = [
+  {
+    status: 400,
+    body: z.object({
+      result: z.number(),
+    }),
+  },
+];
+
 endpointsCollection.post(
   "/add",
   {
-    inputSchema: {
-      body: z.object({
-        a: z.number(),
-        b: z.number(),
-      }),
-    },
-    outputSchema: [
-      {
-        status: 400,
-        body: z.object({
-          result: z.number(),
-        }),
-      },
-    ],
+    inputSchema: input,
+    outputSchema: output,
     summary: "Add two numbers",
-    afterInputValidation: [jwtVerify("secret")],
+    afterInputValidation: (
+      req: TypedRequest<typeof input>,
+      res: TypedResponse<typeof output>,
+      next: NextFunction,
+    ) => {
+      const { a, b } = req.body;
+      res.json({
+        result: a + b,
+      });
+    },
   },
   (req, res) => {
     const { a, b } = req.body;

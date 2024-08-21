@@ -18,6 +18,12 @@ import { IncomingHttpHeaders } from "http";
 import { TypedRequestHandler } from "./types/TypedRequestHandler";
 import { EndpointArgs } from "./types/EndpointArgs";
 
+export * from "./types/EndpointInfo";
+export * from "./types/HttpMethod";
+export * from "./types/CustomErrorHandler";
+export * from "./types/EndpointArgs";
+export * from "./types/TypedRequestHandler";
+
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
   private router = Router();

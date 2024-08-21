@@ -1,16 +1,14 @@
 import { z } from "zod";
 import { NextFunction, Request, Response } from "express";
 import { EndpointInputSchema, EndpointOutputSchema } from "./EndpointInfo";
+import { ParamsDictionary, Query } from "express-serve-static-core";
 
-export type TypedRequest<T extends EndpointInputSchema> = Omit<
-  Request,
-  "body" | "query" | "params" | "headers"
-> & {
+export interface TypedRequest<T extends EndpointInputSchema> extends Request {
   body: z.infer<NonNullable<T["body"]>>;
-  query: z.infer<NonNullable<T["query"]>>;
-  params: z.infer<NonNullable<T["params"]>>;
+  query: z.infer<NonNullable<T["query"]>> & Omit<Query, never>;
+  params: z.infer<NonNullable<T["params"]>> & Omit<ParamsDictionary, never>;
   headers: z.infer<NonNullable<T["headers"]>>;
-};
+}
 
 export type TypedResponse<T extends EndpointOutputSchema> = Omit<
   Response,
