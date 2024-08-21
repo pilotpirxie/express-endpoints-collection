@@ -1,10 +1,4 @@
-import {
-  Request,
-  Response,
-  NextFunction,
-  Router,
-  RequestHandler,
-} from "express";
+import { Request, Response, NextFunction, Router } from "express";
 import {
   EndpointInfo,
   EndpointInputSchema,
@@ -17,6 +11,7 @@ import { ParamsDictionary, Query } from "express-serve-static-core";
 import { IncomingHttpHeaders } from "http";
 import { TypedRequestHandler } from "./types/TypedRequestHandler";
 import { EndpointArgs } from "./types/EndpointArgs";
+import { AllPossibilitiesRequestHandler } from "./types/AllPossibilitiesRequestHandler";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
@@ -151,7 +146,7 @@ export class EndpointsCollection {
       afterInputValidation = [],
       beforeResponse = [],
     }: EndpointArgs<TInput, TOutput>,
-    handler: TypedRequestHandler<TInput, TOutput>,
+    handlers: AllPossibilitiesRequestHandler<TInput, TOutput>,
   ) {
     const pathToUse = this.collectionPrefix
       ? `${this.collectionPrefix}${path}`
@@ -165,7 +160,8 @@ export class EndpointsCollection {
       summary,
     });
 
-    const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
+    const combinedHandlers: AllPossibilitiesRequestHandler<TInput, TOutput>[] =
+      [];
 
     if (beforeInputValidation) {
       combinedHandlers.push(beforeInputValidation);
@@ -179,7 +175,7 @@ export class EndpointsCollection {
       combinedHandlers.push(afterInputValidation);
     }
 
-    combinedHandlers.push(handler);
+    combinedHandlers.push(handlers);
 
     if (beforeResponse) {
       combinedHandlers.push(beforeResponse);
@@ -196,7 +192,7 @@ export class EndpointsCollection {
     args: EndpointArgs<TInput, TOutput>,
     handlers: TypedRequestHandler<TInput, TOutput>,
   ) {
-    return this.callOriginal("get", path, args, handlers);
+    return this.callOriginal<TInput, TOutput>("get", path, args, handlers);
   }
 
   public post<
@@ -207,7 +203,7 @@ export class EndpointsCollection {
     args: EndpointArgs<TInput, TOutput>,
     handler: TypedRequestHandler<TInput, TOutput>,
   ) {
-    return this.callOriginal("post", path, args, handler);
+    return this.callOriginal<TInput, TOutput>("post", path, args, handler);
   }
 
   public put<
