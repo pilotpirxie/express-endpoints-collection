@@ -1,5 +1,6 @@
+import { RequestHandler } from "express";
 import { EndpointInputSchema, EndpointOutputSchema } from "./EndpointInfo";
-import { AllPossibilitiesRequestHandler } from "./AllPossibilitiesRequestHandler";
+import { TypedRequestHandler } from "./TypedRequestHandler";
 
 export type EndpointArgs<
   TInput extends EndpointInputSchema,
@@ -8,7 +9,7 @@ export type EndpointArgs<
   inputSchema?: TInput;
   outputSchema: TOutput;
   summary?: string;
-  beforeInputValidation?: AllPossibilitiesRequestHandler<TInput, TOutput>;
-  afterInputValidation?: AllPossibilitiesRequestHandler<TInput, TOutput>;
-  beforeResponse?: AllPossibilitiesRequestHandler<TInput, TOutput>;
+  beforeInputValidation?: RequestHandler | RequestHandler[];
+  afterInputValidation?: RequestHandler | RequestHandler[];
+  beforeResponse?: RequestHandler | RequestHandler[];
 };
