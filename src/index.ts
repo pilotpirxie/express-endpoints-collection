@@ -151,7 +151,7 @@ export class EndpointsCollection {
       afterInputValidation = [],
       beforeResponse = [],
     }: EndpointArgs<TInput, TOutput>,
-    handlers: RequestHandler | TypedRequestHandler<TInput, TOutput>,
+    handler: TypedRequestHandler<TInput, TOutput>,
   ) {
     const pathToUse = this.collectionPrefix
       ? `${this.collectionPrefix}${path}`
@@ -165,13 +165,10 @@ export class EndpointsCollection {
       summary,
     });
 
-    const combinedHandlers: (
-      | RequestHandler
-      | TypedRequestHandler<TInput, TOutput>
-    )[] = [];
+    const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
 
     if (beforeInputValidation) {
-      combinedHandlers.push(...beforeInputValidation);
+      combinedHandlers.push(beforeInputValidation);
     }
 
     if (inputSchema) {
@@ -179,13 +176,13 @@ export class EndpointsCollection {
     }
 
     if (afterInputValidation) {
-      combinedHandlers.push(...afterInputValidation);
+      combinedHandlers.push(afterInputValidation);
     }
 
-    combinedHandlers.push(handlers);
+    combinedHandlers.push(handler);
 
     if (beforeResponse) {
-      combinedHandlers.push(...beforeResponse);
+      combinedHandlers.push(beforeResponse);
     }
 
     return this.router[method](pathToUse, ...combinedHandlers);
