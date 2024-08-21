@@ -1,6 +1,6 @@
 {
   "name": "express-endpoints-collection",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "main": "./dist/index.js",
   "repository": "https://github.com/pilotpirxie/express-endpoints-collection.git",
   "author": "pilotpirxie <10637666+pilotpirxie@users.noreply.github.com>",
@@ -8,6 +8,7 @@
   "types": "./dist/index.d.ts",
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.14.9",
     "body-parser": "^1.20.2",
@@ -27,6 +28,7 @@
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.1.1",
     "express": "^4.19.2",
+    "js-yaml": "^4.1.0",
     "zod": "^3.23.8"
   },
   "files": [

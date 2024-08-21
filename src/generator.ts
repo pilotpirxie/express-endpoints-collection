@@ -13,10 +13,12 @@ export function generateOpenAPI({
   title,
   version,
   endpoints,
+  servers,
 }: {
   title: string;
   version: string;
   endpoints: EndpointInfo[];
+  servers: string[];
 }) {
   const registry = new OpenAPIRegistry();
 
@@ -67,5 +69,6 @@ export function generateOpenAPI({
       title,
       version,
     },
+    servers: servers.map((url) => ({ url })),
   });
 }
