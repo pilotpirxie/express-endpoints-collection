@@ -12,42 +12,53 @@ import { EndpointArgs } from "./types/EndpointArgs";
 import { HttpMethod } from "./types/HttpMethod";
 import { AnyZodObject, z } from "zod";
 import { TypedRequestHandler } from "./types/TypedRequestHandler";
+import { CustomErrorHandler } from "./types/CustomErrorHandler";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
   private router = Router();
-  private collectionPrefix = "";
+  private readonly collectionPrefix?: string;
+  private readonly customErrorHandler?: CustomErrorHandler;
 
-  public constructor({ collectionPrefix = "" }: { collectionPrefix?: string }) {
+  public constructor({
+    collectionPrefix,
+    customErrorHandler,
+  }: {
+    collectionPrefix?: string;
+    customErrorHandler?: CustomErrorHandler;
+  }) {
     this.collectionPrefix = collectionPrefix;
+    this.customErrorHandler = customErrorHandler;
   }
 
-  private static validateInput(schema: EndpointInputSchema) {
+  private validateInput(schema: EndpointInputSchema) {
     return (req: Request, res: Response, next: NextFunction) => {
       try {
         if (schema.query) {
-          this.coerceAll(schema.query, req.query);
-          const querySchemaCoerced = z.object(schema.query?.shape || {});
-          req.query = querySchemaCoerced.parse(req.query);
+          req.query = this.coerceAll(schema.query, req.query);
+          req.query = schema.query.parse(req.query);
         }
         if (schema.body) {
-          this.coerceAll(schema.body, req.body);
-          const bodySchemaCoerced = z.object(schema.body?.shape || {});
-          req.body = bodySchemaCoerced.parse(req.body);
+          req.body = this.coerceAll(schema.body, req.body);
+          req.body = schema.body.parse(req.body);
         }
         if (schema.params) {
-          this.coerceAll(schema.params, req.params);
-          const paramsSchemaCoerced = z.object(schema.params?.shape || {});
-          req.params = paramsSchemaCoerced.parse(req.params);
+          req.params = this.coerceAll(schema.params, req.params);
+          req.params = schema.params.parse(req.params);
         }
         if (schema.headers) {
-          this.coerceAll(schema.headers, req.headers);
-          const headersSchemaCoerced = z.object(schema.headers?.shape || {});
-          req.headers = headersSchemaCoerced.parse(req.headers);
+          req.headers = this.coerceAll(schema.headers, req.headers);
+          req.headers = schema.headers.parse(req.headers);
         }
         next();
       } catch (error) {
         if (error instanceof z.ZodError) {
+          if (this.customErrorHandler) {
+            return res
+              .status(400)
+              .json(this.customErrorHandler(error, error.errors));
+          }
+
           return res.status(400).json({
             error: error.errors,
           });
@@ -57,38 +68,29 @@ export class EndpointsCollection {
     };
   }
 
-  private static coerceAll(schema: AnyZodObject, data: any) {
+  private coerceAll(schema: AnyZodObject, data: any) {
+    const deepClone = structuredClone(data);
     for (const key in schema.shape) {
       const coerced = EndpointsCollection.coerceOnly(
         schema.shape[key],
-        data[key],
+        deepClone[key],
       );
-      data[key] = coerced.success ? coerced.data : data[key];
+      console.info(
+        "Coercing key",
+        key,
+        "from",
+        deepClone[key],
+        "to",
+        coerced.data,
+        "with schema",
+        schema.shape[key],
+        "result",
+        coerced,
+      );
+      deepClone[key] = coerced.success ? coerced.data : data[key];
     }
+    return deepClone;
   }
-
-  // private static coerce(schema: z.ZodType, data: any) {
-  //   if (schema instanceof z.ZodNumber) {
-  //     return Number(data);
-  //   } else if (schema instanceof z.ZodBoolean) {
-  //     return data === "true" || data === "1" || data === true;
-  //   } else if (schema instanceof z.ZodString) {
-  //     return String(data);
-  //   } else if (schema instanceof z.ZodDate) {
-  //     return new Date(data);
-  //   } else if (schema instanceof z.ZodArray) {
-  //     return Array.isArray(data) ? data : [data];
-  //   } else if (schema instanceof z.ZodRecord) {
-  //     return data;
-  //   } else if (schema instanceof z.ZodObject) {
-  //     const result: Record<string, any> = {};
-  //     for (const key in schema.shape) {
-  //       result[key] = EndpointsCollection.coerce(schema.shape[key], data[key]);
-  //     }
-  //   } else {
-  //     return data;
-  //   }
-  // }
 
   private static coerceOnly<T extends z.ZodTypeAny>(
     schema: T,
@@ -152,7 +154,9 @@ export class EndpointsCollection {
     }: EndpointArgs<EndpointInputSchema, EndpointOutputSchema>,
     handlers: RequestHandler | RequestHandler[] | TypedRequestHandler<any, any>,
   ) {
-    const pathToUse = this.collectionPrefix + path;
+    const pathToUse = this.collectionPrefix
+      ? `${this.collectionPrefix}${path}`
+      : path;
 
     this.endpoints.push({
       path: pathToUse,
@@ -169,7 +173,7 @@ export class EndpointsCollection {
     }
 
     if (inputSchema) {
-      combinedHandlers.push(EndpointsCollection.validateInput(inputSchema));
+      combinedHandlers.push(this.validateInput(inputSchema));
     }
 
     if (afterInputValidation) {
