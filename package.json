@@ -1,6 +1,6 @@
 {
   "name": "express-endpoints-collection",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "main": "./dist/index.js",
   "repository": "https://github.com/pilotpirxie/express-endpoints-collection.git",
   "author": "pilotpirxie <10637666+pilotpirxie@users.noreply.github.com>",
@@ -21,7 +21,8 @@
     "prettier": "prettier --write .",
     "dev": "ts-node ./example/app.ts",
     "minimal": "ts-node ./example/minimal.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "tsc"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.1.1",
