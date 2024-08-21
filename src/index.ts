@@ -152,8 +152,10 @@ export class EndpointsCollection {
     }: EndpointArgs<EndpointInputSchema, EndpointOutputSchema>,
     handlers: RequestHandler | RequestHandler[] | TypedRequestHandler<any, any>,
   ) {
+    const pathToUse = this.collectionPrefix + path;
+
     this.endpoints.push({
-      path: this.collectionPrefix + path,
+      path: pathToUse,
       method: method,
       inputSchema,
       outputSchema,
@@ -180,7 +182,7 @@ export class EndpointsCollection {
       combinedHandlers.push(beforeResponse);
     }
 
-    return this.router[method](path, ...combinedHandlers);
+    return this.router[method](pathToUse, ...combinedHandlers);
   }
 
   public get<
