@@ -46,6 +46,14 @@ app.get("/openapi", (req, res) => {
       version: "1.0.0",
       endpoints: endpointsCollection.getEndpoints(),
       servers: ["http://localhost:3000"],
+      commonResponses: [
+        {
+          status: 500,
+          body: z.object({
+            message: z.string(),
+          }),
+        },
+      ],
     }),
   );
 });
