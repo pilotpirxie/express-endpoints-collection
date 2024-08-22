@@ -2,7 +2,7 @@ import express, { Express } from "express";
 import bodyParser from "body-parser";
 import { z } from "zod";
 import { EndpointsCollection, TypedRequest, TypedResponse } from "../src";
-import { generateOpenAPI } from "../src/generator";
+import { generateOpenAPI } from "../src";
 import { jwtVerify } from "./middlewares/jwt";
 
 const app: Express = express();
