@@ -26,6 +26,22 @@ endpointsCollection.post(
           result: z.number(),
         }),
       },
+      {
+        status: 400,
+      },
+      {
+        status: 400,
+        body: z.object({
+          different400: z.number(),
+        }),
+      },
+      {
+        status: 400,
+        body: z.object({
+          different400: z.number(),
+        }),
+        description: "Custom description",
+      },
     ],
     summary: "Add two numbers",
     afterInputValidation: [jwtVerify("secret")],

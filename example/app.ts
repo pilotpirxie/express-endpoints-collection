@@ -6,7 +6,7 @@ import NodeCache from "node-cache";
 import { NodeCacheAdapter } from "./middlewares/cacheStore";
 import cache from "./middlewares/cache";
 import { jwtVerify } from "./middlewares/jwt";
-import { generateOpenAPI } from "../src/generator";
+import { generateOpenAPI } from "../src";
 import { errorHandler } from "./middlewares/errors";
 
 const port = process.env.PORT || 3000;

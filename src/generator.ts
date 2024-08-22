@@ -5,7 +5,7 @@ import {
   extendZodWithOpenApi,
   OpenApiGeneratorV3,
 } from "@asteasolutions/zod-to-openapi";
-import { z } from "zod";
+import { z, ZodTypeAny } from "zod";
 import yaml from "js-yaml";
 
 extendZodWithOpenApi(z);
@@ -29,38 +29,74 @@ export function generateOpenAPI({
 
   endpoints.forEach((endpoint) => {
     const openapiPath = endpoint.path.replace(/:(\w+)/g, "{$1}");
-    const responses: Record<string, ResponseConfig> = {};
 
-    for (const outputSchema of endpoint.outputSchema) {
-      responses[outputSchema.status.toString()] = {
-        description:
-          outputSchema.description ||
-          `Response for status code ${outputSchema.status}`,
-        content: outputSchema.body
-          ? {
-              "application/json": {
-                schema: outputSchema.body,
-              },
-            }
-          : undefined,
-      };
-    }
+    const combinedSchemas: Record<
+      number,
+      {
+        combinedBody: ZodTypeAny[];
+        descriptions: string[];
+      }
+    > = {};
 
-    if (commonResponses) {
-      for (const outputSchema of commonResponses) {
-        responses[outputSchema.status.toString()] = {
-          description:
-            outputSchema.description ||
-            `Response for status code ${outputSchema.status}`,
-          content: outputSchema.body
-            ? {
-                "application/json": {
-                  schema: outputSchema.body,
-                },
-              }
-            : undefined,
+    const allOutputSchemas: EndpointOutputSchema = [
+      ...endpoint.outputSchema,
+      ...(commonResponses ? commonResponses : []),
+    ];
+
+    for (const schema of allOutputSchemas) {
+      const schemaDescription =
+        schema.description || `Response for status code ${schema.status}`;
+
+      const existingSchema = combinedSchemas[schema.status];
+      const bodyToCombine = schema.body ? schema.body : z.object({});
+      if (existingSchema) {
+        combinedSchemas[schema.status].combinedBody = [
+          ...existingSchema.combinedBody,
+          bodyToCombine,
+        ];
+
+        const existingDescription = existingSchema.descriptions.find(
+          (description) => description === schemaDescription,
+        );
+
+        if (!existingDescription) {
+          combinedSchemas[schema.status].descriptions = [
+            ...existingSchema.descriptions,
+            schemaDescription,
+          ];
+        }
+      } else {
+        combinedSchemas[schema.status] = {
+          combinedBody: [bodyToCombine],
+          descriptions: [schemaDescription],
         };
       }
+    }
+
+    const responses: Record<string, ResponseConfig> = {};
+    for (const schemaStatusCode in combinedSchemas) {
+      const schema = combinedSchemas[schemaStatusCode];
+      let unionSchema: z.ZodType;
+      if (schema.combinedBody.length > 1) {
+        unionSchema = z.union([...schema.combinedBody] as [
+          ZodTypeAny,
+          ZodTypeAny,
+          ...ZodTypeAny[],
+        ]);
+      } else if (schema.combinedBody.length === 1) {
+        unionSchema = schema.combinedBody[0];
+      } else {
+        unionSchema = z.object({});
+      }
+
+      responses[schemaStatusCode] = {
+        description: schema.descriptions.join(" OR "),
+        content: {
+          "application/json": {
+            schema: unionSchema,
+          },
+        },
+      };
     }
 
     registry.registerPath({

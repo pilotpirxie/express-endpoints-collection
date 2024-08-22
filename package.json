@@ -1,6 +1,6 @@
 {
   "name": "express-endpoints-collection",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "main": "./dist/index.js",
   "repository": "https://github.com/pilotpirxie/express-endpoints-collection.git",
   "author": "pilotpirxie <10637666+pilotpirxie@users.noreply.github.com>",
@@ -22,6 +22,7 @@
     "prettier": "prettier --write .",
     "dev": "ts-node ./example/app.ts",
     "minimal": "ts-node ./example/minimal.ts",
+    "multiple": "ts-node ./example/multiple.ts",
     "middlewares": "ts-node ./example/middlewares.ts",
     "build": "tsc",
     "prepare": "tsc"

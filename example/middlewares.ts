@@ -1,8 +1,12 @@
 import express, { Express, NextFunction } from "express";
 import bodyParser from "body-parser";
 import { z } from "zod";
-import { EndpointsCollection, TypedRequest, TypedResponse } from "../src";
-import { generateOpenAPI } from "../src/generator";
+import {
+  EndpointsCollection,
+  generateOpenAPI,
+  TypedRequest,
+  TypedResponse,
+} from "../src";
 import { jwtVerify } from "./middlewares/jwt";
 
 const app: Express = express();
