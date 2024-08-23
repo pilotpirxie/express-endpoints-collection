@@ -93,7 +93,12 @@ export class EndpointsCollection {
     schema: z.ZodTypeAny,
     value: unknown,
   ): z.SafeParseReturnType<unknown, unknown> {
-    if (schema instanceof z.ZodString) {
+    if (value === undefined) {
+      return {
+        success: true,
+        data: undefined,
+      };
+    } else if (schema instanceof z.ZodString) {
       return z.coerce.string().safeParse(value);
     } else if (schema instanceof z.ZodNumber) {
       return z.coerce.number().safeParse(value);
