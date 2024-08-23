@@ -85,6 +85,7 @@ export class EndpointsCollection {
 
       deepClone[key] = coerced.success ? coerced.data : data[key];
     }
+
     return deepClone;
   }
 
@@ -132,6 +133,18 @@ export class EndpointsCollection {
         return z.object(schema.shape).safeParse(coercedObject);
       }
       return z.object(schema.shape).safeParse(value);
+    } else if (schema instanceof z.ZodUnion) {
+      for (const unionSchema of schema.options) {
+        const coerced = this.coerceOnly(unionSchema, value);
+        if (coerced.success) {
+          return coerced;
+        }
+      }
+      return schema.safeParse(value);
+    } else if (schema instanceof z.ZodLiteral) {
+      return schema.safeParse(value);
+    } else if (schema instanceof z.ZodOptional) {
+      return this.coerceOnly(schema._def.innerType, value);
     } else {
       return schema.safeParse(value);
     }
