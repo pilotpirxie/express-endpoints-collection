@@ -52,6 +52,7 @@ endpointsCollection.post(
       },
     ],
     summary: "Register a new user",
+    operationId: "registerUser",
   },
   (req, res) => {
     const { username, email } = req.body;

@@ -103,6 +103,7 @@ export function generateOpenAPI({
       method: endpoint.method,
       path: openapiPath,
       summary: endpoint.summary || "",
+      operationId: endpoint.operationId,
       request: {
         params: endpoint.inputSchema?.params,
         query: endpoint.inputSchema?.query,

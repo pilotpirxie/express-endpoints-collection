@@ -20,4 +20,5 @@ export type EndpointInfo = {
   inputSchema?: EndpointInputSchema;
   outputSchema: EndpointOutputSchema;
   summary?: string;
+  operationId?: string;
 };

@@ -9,6 +9,7 @@ export type EndpointArgs<
   inputSchema?: TInput;
   outputSchema: TOutput;
   summary?: string;
+  operationId?: string;
   beforeInputValidation?: (
     | RequestHandler
     | RequestHandler[]

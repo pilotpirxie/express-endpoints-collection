@@ -165,6 +165,7 @@ export class EndpointsCollection {
       inputSchema,
       outputSchema,
       summary,
+      operationId,
       beforeInputValidation = [],
       afterInputValidation = [],
       beforeResponse = [],
@@ -181,6 +182,7 @@ export class EndpointsCollection {
       inputSchema,
       outputSchema,
       summary,
+      operationId,
     });
 
     const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
