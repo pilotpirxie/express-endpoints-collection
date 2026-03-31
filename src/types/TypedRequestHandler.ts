@@ -4,9 +4,10 @@ import { EndpointInputSchema, EndpointOutputSchema } from "./EndpointInfo";
 import { ParamsDictionary, Query } from "express-serve-static-core";
 import { IncomingHttpHeaders } from "http";
 
-type TypedHeaders<T extends EndpointInputSchema> = undefined extends T["headers"]
-  ? IncomingHttpHeaders
-  : z.output<NonNullable<T["headers"]>> & IncomingHttpHeaders;
+type TypedHeaders<T extends EndpointInputSchema> =
+  undefined extends T["headers"]
+    ? IncomingHttpHeaders
+    : z.output<NonNullable<T["headers"]>> & IncomingHttpHeaders;
 
 export interface TypedRequest<T extends EndpointInputSchema>
   extends Omit<Request, "body" | "query" | "params" | "headers"> {

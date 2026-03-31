@@ -16,16 +16,19 @@
     "node-cache": "^5.1.2",
     "prettier": "3.4.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   },
   "scripts": {
-    "prettier": "prettier --write .",
+    "fix": "prettier --write .",
     "dev": "ts-node ./example/app.ts",
     "minimal": "ts-node ./example/minimal.ts",
     "multiple": "ts-node ./example/multiple.ts",
     "middlewares": "ts-node ./example/middlewares.ts",
     "build": "tsc",
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "test": "time tsc --noEmit && node --import tsx --test --experimental-test-coverage **/*.spec.ts",
+    "lint": "tsc --noEmit && npx prettier --check . && npx knip"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",

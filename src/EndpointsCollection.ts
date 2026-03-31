@@ -58,7 +58,9 @@ export class EndpointsCollection {
             schema.headers,
             req.headers,
           ) as IncomingHttpHeaders;
-          req.headers = schema.headers.parse(req.headers) as IncomingHttpHeaders;
+          req.headers = schema.headers.parse(
+            req.headers,
+          ) as IncomingHttpHeaders;
         }
         next();
       } catch (error) {
@@ -191,8 +193,9 @@ export class EndpointsCollection {
 
     const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
 
-    const asExpressHandler = (h: RequestHandler | TypedRequestHandler<TInput, TOutput>) =>
-      h as unknown as RequestHandler;
+    const asExpressHandler = (
+      h: RequestHandler | TypedRequestHandler<TInput, TOutput>,
+    ) => h as unknown as RequestHandler;
 
     if (beforeInputValidation) {
       for (const item of beforeInputValidation) {
