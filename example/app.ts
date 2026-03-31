@@ -477,7 +477,7 @@ endpointsCollection.post(
 
 app.use(endpointsCollection.getRouter());
 
-app.get("/openapi", (req, res) => {
+app.get("/openapi.yaml", (req, res) => {
   res.setHeader("Content-Type", "text/yaml");
   return res.send(
     generateOpenAPI({
