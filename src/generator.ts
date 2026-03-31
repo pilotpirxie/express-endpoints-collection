@@ -5,7 +5,7 @@ import {
   extendZodWithOpenApi,
   OpenApiGeneratorV3,
 } from "@asteasolutions/zod-to-openapi";
-import { z, ZodTypeAny } from "zod";
+import { z, ZodType } from "zod";
 import yaml from "js-yaml";
 
 extendZodWithOpenApi(z);
@@ -33,7 +33,7 @@ export function generateOpenAPI({
     const combinedSchemas: Record<
       number,
       {
-        combinedBody: ZodTypeAny[];
+        combinedBody: ZodType[];
         descriptions: string[];
       }
     > = {};
@@ -79,9 +79,9 @@ export function generateOpenAPI({
       let unionSchema: z.ZodType;
       if (schema.combinedBody.length > 1) {
         unionSchema = z.union([...schema.combinedBody] as [
-          ZodTypeAny,
-          ZodTypeAny,
-          ...ZodTypeAny[],
+          ZodType,
+          ZodType,
+          ...ZodType[],
         ]);
       } else if (schema.combinedBody.length === 1) {
         unionSchema = schema.combinedBody[0];
