@@ -1,0 +1,11 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/index.ts",
+    "src/**/*.spec.ts",
+    "example/*.ts",
+    "example/middlewares/*.ts"
+  ],
+  "project": ["src/**/*.ts", "example/**/*.ts"],
+  "ignoreDependencies": ["express-serve-static-core"]
+}

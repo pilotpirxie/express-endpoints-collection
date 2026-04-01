@@ -1,7 +1,3 @@
-/**
- * Unit tests for OpenAPI document generation from EndpointInfo definitions.
- * Asserts on concrete OpenAPI 3 shapes produced by generateOpenAPI (paths, parameters, requestBody, responses).
- */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import yaml from "js-yaml";
@@ -9,7 +5,6 @@ import { z } from "zod";
 import { generateOpenAPI } from "./generator";
 import type { EndpointInfo } from "./types/EndpointInfo";
 
-/** Default document metadata used across tests so each case focuses on path/operation shape. */
 const defaultMeta: {
   title: string;
   version: string;

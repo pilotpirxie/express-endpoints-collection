@@ -1,7 +1,3 @@
-/**
- * Integration-style unit tests for EndpointsCollection: routing, Zod validation/coercion,
- * collection prefix, middleware order, custom validation errors, and Express error propagation.
- */
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { describe, it } from "node:test";
@@ -9,15 +5,10 @@ import express, { type Express, type ErrorRequestHandler } from "express";
 import { z } from "zod";
 import { EndpointsCollection } from "./EndpointsCollection";
 
-/** Minimal 200 response schema used when tests only care about status or ad-hoc JSON shape. */
 const emptyOkOutput = [
   { status: 200 as const, body: z.object({ ok: z.literal(true) }) },
 ];
 
-/**
- * Starts an Express app on an ephemeral port, runs the callback with a base URL, then closes the server.
- * Ensures JSON bodies are parsed and optional error middleware runs after routes.
- */
 async function withServer(
   configure: (app: Express) => void,
   run: (baseUrl: string) => Promise<void>,
@@ -44,7 +35,7 @@ async function withServer(
 }
 
 describe("EndpointsCollection", () => {
-  it("registers a GET route without input schema and returns handler JSON", async () => {
+  it("should register a GET route without input schema and return handler JSON", async () => {
     const collection = new EndpointsCollection();
     collection.get("/ping", { outputSchema: emptyOkOutput }, (_req, res) => {
       res.status(200).json({ ok: true });
@@ -62,7 +53,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("prepends collectionPrefix to registered paths on the router", async () => {
+  it("should prepend collectionPrefix to registered paths on the router", async () => {
     const collection = new EndpointsCollection({ collectionPrefix: "/api/v1" });
     collection.get("/test", { outputSchema: emptyOkOutput }, (_req, res) => {
       res.status(200).json({ ok: true });
@@ -83,7 +74,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("coerces string query values to numbers per Zod schema before the handler runs", async () => {
+  it("should coerce string query values to numbers per Zod schema before the handler runs", async () => {
     const collection = new EndpointsCollection();
     collection.get(
       "/query",
@@ -117,7 +108,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("responds 400 with default Zod issue payload when body fails validation", async () => {
+  it("should respond 400 with default Zod issue payload when body fails validation", async () => {
     const collection = new EndpointsCollection();
     collection.post(
       "/items",
@@ -150,7 +141,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("parses numeric path params when valid and rejects non-numeric params with 400", async () => {
+  it("should parse numeric path params when valid and reject non-numeric params with 400", async () => {
     const collection = new EndpointsCollection();
     collection.get(
       "/users/:userId",
@@ -178,7 +169,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("requires declared headers and returns 400 when a required header is missing", async () => {
+  it("should require declared headers and return 400 when a required header is missing", async () => {
     const collection = new EndpointsCollection();
     collection.get(
       "/secure",
@@ -212,7 +203,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("uses customErrorHandler payload for Zod validation failures", async () => {
+  it("should use customErrorHandler payload for Zod validation failures", async () => {
     const collection = new EndpointsCollection({
       customErrorHandler: (_error, validationDetails) => ({
         customError: validationDetails,
@@ -246,7 +237,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("runs beforeInputValidation, validation, afterInputValidation, then the handler in order", async () => {
+  it("should run beforeInputValidation, validation, afterInputValidation, then the handler in order", async () => {
     const collection = new EndpointsCollection();
     const order: string[] = [];
 
@@ -290,7 +281,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("exposes POST, PUT, DELETE, and PATCH handlers on distinct paths", async () => {
+  it("should expose POST, PUT, DELETE, and PATCH handlers on distinct paths", async () => {
     const collection = new EndpointsCollection();
     const methodBody = z.object({ method: z.string() });
 
@@ -347,7 +338,7 @@ describe("EndpointsCollection", () => {
     );
   });
 
-  it("propagates synchronous handler errors to Express error middleware as 500", async () => {
+  it("should propagate synchronous handler errors to Express error middleware as 500", async () => {
     const collection = new EndpointsCollection();
     collection.get("/boom", { outputSchema: emptyOkOutput }, () => {
       throw new Error("Internal");
