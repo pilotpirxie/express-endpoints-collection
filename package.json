@@ -28,8 +28,8 @@
     "middlewares": "ts-node ./example/middlewares.ts",
     "build": "tsc",
     "prepare": "tsc",
-    "test": "time tsc --noEmit && node --import tsx --test --experimental-test-coverage \"src/**/*.spec.ts\" \"example/**/*.spec.ts\"",
-    "lint": "tsc --noEmit && npx prettier --check . && npx knip"
+    "test": "tsc --noEmit && tsc --noEmit -p tsconfig.spec.json && tsc --noEmit -p tsconfig.example.json && node --import tsx --test --experimental-test-coverage \"src/**/*.spec.ts\" \"examples/**/*.spec.ts\"",
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.example.json && prettier --write . && knip"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",

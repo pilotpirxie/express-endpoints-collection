@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { describe, it } from "node:test";
-import express, { type Express, type ErrorRequestHandler } from "express";
+import express, { type ErrorRequestHandler, type Express } from "express";
 import { z } from "zod";
 import { EndpointsCollection } from "./EndpointsCollection";
 
@@ -260,6 +260,12 @@ describe("EndpointsCollection", () => {
             next();
           },
         ],
+        beforeResponse: [
+          (_req, _res, next) => {
+            order.push("after");
+            next();
+          },
+        ],
       },
       (_req, res) => {
         order.push("handler");
@@ -358,6 +364,230 @@ describe("EndpointsCollection", () => {
         const response = await fetch(`${baseUrl}/boom`);
         assert.equal(response.status, 500);
         assert.deepEqual(await response.json(), { message: "Internal" });
+      },
+    );
+  });
+
+  it("should validate multiple path segments like /users/:userId/posts/:postId", async () => {
+    const collection = new EndpointsCollection();
+    collection.get(
+      "/users/:userId/posts/:postId",
+      {
+        inputSchema: {
+          params: z.object({
+            userId: z.coerce.number(),
+            postId: z.coerce.number(),
+          }),
+        },
+        outputSchema: [
+          {
+            status: 200,
+            body: z.object({
+              userId: z.number(),
+              postId: z.number(),
+            }),
+          },
+        ],
+      },
+      (req, res) => {
+        res.status(200).json({
+          userId: req.params.userId,
+          postId: req.params.postId,
+        });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/users/10/posts/99`);
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), { userId: 10, postId: 99 });
+      },
+    );
+  });
+
+  it("should allow handlers to return different declared status bodies (200 vs 404)", async () => {
+    const collection = new EndpointsCollection();
+    collection.get(
+      "/resource/:id",
+      {
+        inputSchema: { params: z.object({ id: z.string() }) },
+        outputSchema: [
+          {
+            status: 200,
+            body: z.object({ found: z.literal(true), id: z.string() }),
+          },
+          { status: 404, body: z.object({ found: z.literal(false) }) },
+        ],
+      },
+      (req, res) => {
+        if (req.params.id === "missing") {
+          res.status(404).json({ found: false });
+          return;
+        }
+        res.status(200).json({ found: true, id: req.params.id });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const ok = await fetch(`${baseUrl}/resource/abc`);
+        assert.equal(ok.status, 200);
+        assert.deepEqual(await ok.json(), { found: true, id: "abc" });
+
+        const notFound = await fetch(`${baseUrl}/resource/missing`);
+        assert.equal(notFound.status, 404);
+        assert.deepEqual(await notFound.json(), { found: false });
+      },
+    );
+  });
+
+  it("should accept standard Express middleware in beforeInputValidation (e.g. sets a header)", async () => {
+    const collection = new EndpointsCollection();
+    collection.get(
+      "/traced",
+      {
+        outputSchema: [
+          { status: 200, body: z.object({ traceHeader: z.string() }) },
+        ],
+        beforeInputValidation: [
+          (_req, res, next) => {
+            res.setHeader("x-trace", "from-middleware");
+            next();
+          },
+        ],
+      },
+      (_req, res) => {
+        const traceHeader = res.getHeader("x-trace");
+        res.status(200).json({
+          traceHeader: typeof traceHeader === "string" ? traceHeader : "",
+        });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/traced`);
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get("x-trace"), "from-middleware");
+        assert.deepEqual(await response.json(), {
+          traceHeader: "from-middleware",
+        });
+      },
+    );
+  });
+
+  it("should work when the collection router is mounted under a parent path with app.use", async () => {
+    const collection = new EndpointsCollection();
+    collection.get(
+      "/items",
+      {
+        outputSchema: [
+          { status: 200, body: z.object({ path: z.literal("/nested/items") }) },
+        ],
+      },
+      (_req, res) => {
+        res.status(200).json({ path: "/nested/items" });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use("/nested", collection.getRouter());
+      },
+      async (baseUrl) => {
+        const miss = await fetch(`${baseUrl}/items`);
+        assert.equal(miss.status, 404);
+
+        const hit = await fetch(`${baseUrl}/nested/items`);
+        assert.equal(hit.status, 200);
+        assert.deepEqual(await hit.json(), { path: "/nested/items" });
+      },
+    );
+  });
+
+  it("should support PUT with JSON body for typical update-resource flows", async () => {
+    const collection = new EndpointsCollection();
+    collection.put(
+      "/profile",
+      {
+        inputSchema: {
+          body: z.object({
+            displayName: z.string().min(1),
+            bio: z.string().optional(),
+          }),
+        },
+        outputSchema: [
+          {
+            status: 200,
+            body: z.object({
+              displayName: z.string(),
+              bio: z.string().optional(),
+            }),
+          },
+        ],
+      },
+      (req, res) => {
+        res.status(200).json({
+          displayName: req.body.displayName,
+          bio: req.body.bio,
+        });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/profile`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName: "Ada",
+            bio: "Engineer",
+          }),
+        });
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), {
+          displayName: "Ada",
+          bio: "Engineer",
+        });
+      },
+    );
+  });
+
+  it("should merge collectionPrefix with app.use mount path for full URL shape", async () => {
+    const collection = new EndpointsCollection({ collectionPrefix: "/v2" });
+    collection.get(
+      "/health",
+      {
+        outputSchema: [
+          { status: 200, body: z.object({ ok: z.literal(true) }) },
+        ],
+      },
+      (_req, res) => {
+        res.status(200).json({ ok: true });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use("/api", collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/api/v2/health`);
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), { ok: true });
       },
     );
   });

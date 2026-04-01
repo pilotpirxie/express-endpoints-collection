@@ -23,15 +23,15 @@ export type TypedResponse<T extends EndpointOutputSchema> = Omit<
   Response,
   "json" | "status" | "sendStatus"
 > & {
-  json: (data: z.infer<NonNullable<T[number]["body"]>>) => void;
+  json: (data: z.infer<NonNullable<T[number]["body"]>>) => Response;
   status: <S extends T[number]["status"]>(
     code: S,
-  ) => Omit<TypedResponse<T>, "status"> & {
+  ) => Response & {
     json: (
       data: z.infer<NonNullable<Extract<T[number], { status: S }>["body"]>>,
-    ) => void;
+    ) => Response;
   };
-  sendStatus: <S extends T[number]["status"]>(code: S) => void;
+  sendStatus: <S extends T[number]["status"]>(code: S) => Response;
 };
 
 export type TypedRequestHandler<
@@ -41,4 +41,4 @@ export type TypedRequestHandler<
   req: TypedRequest<TInput>,
   res: TypedResponse<TOutput>,
   next: NextFunction,
-) => void | Promise<void>;
+) => unknown;

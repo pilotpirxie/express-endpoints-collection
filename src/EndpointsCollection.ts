@@ -35,12 +35,22 @@ export class EndpointsCollection {
     this.customErrorHandler = customErrorHandler;
   }
 
+  private setRequestQuery(req: Request, query: Query): void {
+    Object.defineProperty(req, "query", {
+      value: query,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
   private validateInput(schema: EndpointInputSchema) {
     return (req: Request, res: Response, next: NextFunction) => {
       try {
         if (schema.query) {
-          req.query = this.coerceAll(schema.query, req.query) as Query;
-          req.query = schema.query.parse(req.query) as Query;
+          let query = this.coerceAll(schema.query, req.query) as Query;
+          query = schema.query.parse(query) as Query;
+          this.setRequestQuery(req, query);
         }
         if (schema.body) {
           req.body = this.coerceAll(schema.body, req.body);

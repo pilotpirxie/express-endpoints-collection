@@ -22,7 +22,8 @@
     "test",
     "coverage",
     "dist",
-    "example",
+    "tests",
+    "examples",
     "**/*.spec.ts"
   ]
 }
