@@ -28,7 +28,7 @@
     "middlewares": "ts-node ./example/middlewares.ts",
     "build": "tsc",
     "prepare": "tsc",
-    "test": "time tsc --noEmit && node --import tsx --test --experimental-test-coverage **/*.spec.ts",
+    "test": "time tsc --noEmit && node --import tsx --test --experimental-test-coverage \"src/**/*.spec.ts\" \"example/**/*.spec.ts\"",
     "lint": "tsc --noEmit && npx prettier --check . && npx knip"
   },
   "dependencies": {

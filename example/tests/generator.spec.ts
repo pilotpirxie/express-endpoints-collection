@@ -1,11 +1,249 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import yaml from "js-yaml";
-import { generateOpenAPI } from "./generator";
+import { z } from "zod";
 import {
-  createRegressionEndpointsCollection,
-  regressionOpenAPIMeta,
-} from "./generator-regression.fixtures";
+  endpointsCollection as appEndpointsCollection,
+  openApiConfig as appOpenApiConfig,
+} from "../app";
+import {
+  endpointsCollection as middlewaresEndpointsCollection,
+  openApiConfig as middlewaresOpenApiConfig,
+} from "../middlewares";
+import {
+  endpointsCollection as minimalEndpointsCollection,
+  openApiConfig as minimalOpenApiConfig,
+} from "../minimal";
+import {
+  endpointsCollection as multipleEndpointsCollection,
+  openApiConfig as multipleOpenApiConfig,
+} from "../multiple";
+import { EndpointsCollection, generateOpenAPI } from "../../src";
+import { APP, MIDDLEWARES, MINIMAL, MULTIPLE } from "./expectedOutputs";
+
+/**
+ * Synthetic diverse routes (not tied to a single example) for inline YAML regression.
+ */
+function buildSyntheticRegressionEndpointsCollection(): EndpointsCollection {
+  const collection = new EndpointsCollection();
+
+  collection.post(
+    "/users",
+    {
+      inputSchema: {
+        body: z.object({
+          username: z.string().min(3).max(20),
+          email: z.string().email(),
+          password: z.string().min(8),
+        }),
+      },
+      outputSchema: [
+        {
+          status: 201,
+          body: z.object({
+            id: z.number(),
+            username: z.string(),
+            email: z.string().email(),
+          }),
+        },
+        {
+          status: 400,
+          body: z.object({
+            error: z.string(),
+          }),
+        },
+      ],
+      summary: "Register a new user",
+      operationId: "registerUser",
+    },
+    (_req, res) => {
+      res.status(201).end();
+    },
+  );
+
+  collection.get(
+    "/users/:id",
+    {
+      inputSchema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        headers: z.object({
+          authorization: z.string(),
+        }),
+      },
+      outputSchema: [
+        {
+          status: 200,
+          body: z.object({
+            id: z.number(),
+            username: z.string(),
+            email: z.string().email(),
+          }),
+        },
+        {
+          status: 404,
+          body: z.object({
+            error: z.string(),
+          }),
+        },
+      ],
+      summary: "Get user profile",
+    },
+    (_req, res) => {
+      res.status(200).end();
+    },
+  );
+
+  collection.put(
+    "/users/:id",
+    {
+      inputSchema: {
+        params: z.object({
+          id: z.string(),
+        }),
+        body: z.object({
+          username: z.string().min(3).max(20).optional(),
+          email: z.string().email().optional(),
+        }),
+        headers: z.object({
+          authorization: z.string(),
+        }),
+      },
+      outputSchema: [
+        {
+          status: 200,
+          body: z.object({
+            id: z.number(),
+            username: z.string(),
+            email: z.string().email(),
+          }),
+        },
+        {
+          status: 404,
+          body: z.object({
+            error: z.string(),
+          }),
+        },
+      ],
+      summary: "Update user profile",
+    },
+    (_req, res) => {
+      res.status(200).end();
+    },
+  );
+
+  collection.get(
+    "/products/search",
+    {
+      inputSchema: {
+        query: z.object({
+          q: z.string().optional(),
+          category: z.array(z.string()).optional(),
+          minPrice: z.number().optional(),
+          maxPrice: z.number().optional(),
+          inStock: z.boolean().optional(),
+          sortBy: z.enum(["price", "name", "popularity"]).optional(),
+          page: z.number().int().positive().optional(),
+        }),
+      },
+      outputSchema: [
+        {
+          status: 200,
+          body: z.object({
+            products: z.array(
+              z.object({
+                id: z.number(),
+                name: z.string(),
+                price: z.number(),
+              }),
+            ),
+            totalCount: z.number(),
+          }),
+        },
+      ],
+      summary: "Product search",
+    },
+    (_req, res) => {
+      res.status(200).end();
+    },
+  );
+
+  collection.post(
+    "/webhooks/payment",
+    {
+      inputSchema: {
+        body: z.object({
+          event: z.enum(["payment.success", "payment.failure"]),
+          paymentId: z.string(),
+          amount: z.number(),
+          currency: z.string().length(3),
+          timestamp: z.string().datetime(),
+        }),
+        headers: z.object({
+          "x-webhook-signature": z.string(),
+        }),
+      },
+      outputSchema: [
+        {
+          status: 200,
+          body: z.object({
+            received: z.boolean(),
+            message: z.string(),
+          }),
+        },
+        {
+          status: 401,
+          body: z.object({
+            error: z.string(),
+          }),
+        },
+      ],
+      summary: "Receive payment webhook",
+    },
+    (_req, res) => {
+      res.status(200).end();
+    },
+  );
+
+  collection.post(
+    "/validate",
+    {
+      outputSchema: [
+        {
+          status: 200,
+          description: "Shape A",
+          body: z.object({ a: z.number() }),
+        },
+        {
+          status: 200,
+          description: "Shape B",
+          body: z.object({ b: z.string() }),
+        },
+      ],
+      summary: "Merged same-status responses",
+    },
+    (_req, res) => {
+      res.status(200).end();
+    },
+  );
+
+  return collection;
+}
+
+const syntheticRegressionOpenAPIMeta = {
+  title: "Regression Test API",
+  version: "1.0.0",
+  servers: ["https://api.example.com"] as const,
+  commonResponses: [
+    {
+      status: 500,
+      body: z.object({
+        message: z.string(),
+      }),
+    },
+  ] as const,
+};
 
 /**
  * Baseline OpenAPI document for regression routes, expressed as YAML so future
@@ -431,13 +669,13 @@ function stripUndefinedDeep(value: unknown): unknown {
 
 describe("generateOpenAPI regression snapshot", () => {
   it("matches expected YAML literal when both are parsed to objects", () => {
-    const collection = createRegressionEndpointsCollection();
+    const collection = buildSyntheticRegressionEndpointsCollection();
     const generated = generateOpenAPI({
-      title: regressionOpenAPIMeta.title,
-      version: regressionOpenAPIMeta.version,
-      servers: [...regressionOpenAPIMeta.servers],
+      title: syntheticRegressionOpenAPIMeta.title,
+      version: syntheticRegressionOpenAPIMeta.version,
+      servers: [...syntheticRegressionOpenAPIMeta.servers],
       endpoints: collection.getEndpoints(),
-      commonResponses: [...regressionOpenAPIMeta.commonResponses],
+      commonResponses: [...syntheticRegressionOpenAPIMeta.commonResponses],
       asJson: true,
     }) as unknown as Record<string, unknown>;
 
@@ -445,6 +683,61 @@ describe("generateOpenAPI regression snapshot", () => {
       string,
       unknown
     >;
+
+    assert.deepEqual(stripUndefinedDeep(generated), expected);
+  });
+
+  it("example/minimal.ts OpenAPI matches frozen expectedOutputs.MINIMAL", () => {
+    const generated = generateOpenAPI({
+      ...minimalOpenApiConfig,
+      servers: [...minimalOpenApiConfig.servers],
+      endpoints: minimalEndpointsCollection.getEndpoints(),
+      asJson: true,
+    }) as unknown as Record<string, unknown>;
+
+    const expected = yaml.load(MINIMAL) as unknown as Record<string, unknown>;
+
+    assert.deepEqual(stripUndefinedDeep(generated), expected);
+  });
+
+  it("example/multiple.ts OpenAPI matches frozen expectedOutputs.MULTIPLE", () => {
+    const generated = generateOpenAPI({
+      ...multipleOpenApiConfig,
+      servers: [...multipleOpenApiConfig.servers],
+      endpoints: multipleEndpointsCollection.getEndpoints(),
+      asJson: true,
+    }) as unknown as Record<string, unknown>;
+
+    const expected = yaml.load(MULTIPLE) as unknown as Record<string, unknown>;
+
+    assert.deepEqual(stripUndefinedDeep(generated), expected);
+  });
+
+  it("example/middlewares.ts OpenAPI matches frozen expectedOutputs.MIDDLEWARES", () => {
+    const generated = generateOpenAPI({
+      ...middlewaresOpenApiConfig,
+      servers: [...middlewaresOpenApiConfig.servers],
+      endpoints: middlewaresEndpointsCollection.getEndpoints(),
+      asJson: true,
+    }) as unknown as Record<string, unknown>;
+
+    const expected = yaml.load(MIDDLEWARES) as unknown as Record<
+      string,
+      unknown
+    >;
+
+    assert.deepEqual(stripUndefinedDeep(generated), expected);
+  });
+
+  it("example/app.ts OpenAPI matches frozen expectedOutputs.APP", () => {
+    const generated = generateOpenAPI({
+      ...appOpenApiConfig,
+      servers: [...appOpenApiConfig.servers],
+      endpoints: appEndpointsCollection.getEndpoints(),
+      asJson: true,
+    }) as unknown as Record<string, unknown>;
+
+    const expected = yaml.load(APP) as unknown as Record<string, unknown>;
 
     assert.deepEqual(stripUndefinedDeep(generated), expected);
   });

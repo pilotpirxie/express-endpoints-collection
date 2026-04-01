@@ -12,7 +12,13 @@ import { jwtVerify } from "./middlewares/jwt";
 const app: Express = express();
 app.use(bodyParser.json());
 
-const endpointsCollection = new EndpointsCollection();
+export const endpointsCollection = new EndpointsCollection();
+
+export const openApiConfig = {
+  title: "Middlewares demo",
+  version: "1.0.0",
+  servers: ["http://localhost:3000"] as const,
+};
 
 const input = {
   body: z.object({
@@ -65,14 +71,14 @@ app.get("/openapi.yaml", (req, res) => {
   res.setHeader("Content-Type", "text/yaml");
   return res.send(
     generateOpenAPI({
-      title: "Minimal demo",
-      version: "1.0.0",
+      ...openApiConfig,
       endpoints: endpointsCollection.getEndpoints(),
-      servers: ["http://localhost:3000"],
     }),
   );
 });
 
-app.listen(3000, () => {
-  console.info(`Server is running on port http://localhost:3000`);
-});
+if (require.main === module) {
+  app.listen(3000, () => {
+    console.info(`Server is running on port http://localhost:3000`);
+  });
+}
