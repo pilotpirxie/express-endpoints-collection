@@ -9,8 +9,10 @@ type TypedHeaders<T extends EndpointInputSchema> =
     ? IncomingHttpHeaders
     : z.output<NonNullable<T["headers"]>> & IncomingHttpHeaders;
 
-export interface TypedRequest<T extends EndpointInputSchema>
-  extends Omit<Request, "body" | "query" | "params" | "headers"> {
+export interface TypedRequest<T extends EndpointInputSchema> extends Omit<
+  Request,
+  "body" | "query" | "params" | "headers"
+> {
   body: z.infer<NonNullable<T["body"]>>;
   query: z.infer<NonNullable<T["query"]>> & Omit<Query, never>;
   params: z.infer<NonNullable<T["params"]>> & Omit<ParamsDictionary, never>;
