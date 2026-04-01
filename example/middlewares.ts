@@ -17,7 +17,7 @@ export const endpointsCollection = new EndpointsCollection();
 export const openApiConfig = {
   title: "Middlewares demo",
   version: "1.0.0",
-  servers: ["http://localhost:3000"] as const,
+  servers: ["http://localhost:3000"],
 };
 
 const input = {

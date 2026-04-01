@@ -13,7 +13,7 @@ export const endpointsCollection = new EndpointsCollection();
 export const openApiConfig = {
   title: "Multiple demo",
   version: "1.0.0",
-  servers: ["http://localhost:3000"] as const,
+  servers: ["http://localhost:3000"],
   commonResponses: [
     {
       status: 500,
