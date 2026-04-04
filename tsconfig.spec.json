@@ -4,5 +4,5 @@
     "noEmit": true
   },
   "include": ["src/**/*.spec.ts"],
-  "exclude": ["node_modules", "dist", "example", "coverage", "bin", "test"]
+  "exclude": ["node_modules", "dist", "coverage", "bin", "test"]
 }

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["./**/*.ts"],
-  "ignoreDependencies": ["express-serve-static-core"]
+  "ignoreDependencies": ["express-serve-static-core", "openapi3-ts"]
 }
