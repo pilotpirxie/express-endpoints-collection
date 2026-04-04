@@ -10,21 +10,12 @@ export type EndpointArgs<
   outputSchema: TOutput;
   summary?: string;
   operationId?: string;
-  beforeInputValidation?: (
-    | RequestHandler
-    | RequestHandler[]
-    | TypedRequestHandler<TInput, TOutput>
-    | TypedRequestHandler<TInput, TOutput>[]
-  )[];
+  beforeInputValidation?: (RequestHandler | RequestHandler[])[];
   afterInputValidation?: (
-    | RequestHandler
-    | RequestHandler[]
     | TypedRequestHandler<TInput, TOutput>
     | TypedRequestHandler<TInput, TOutput>[]
   )[];
   beforeResponse?: (
-    | RequestHandler
-    | RequestHandler[]
     | TypedRequestHandler<TInput, TOutput>
     | TypedRequestHandler<TInput, TOutput>[]
   )[];

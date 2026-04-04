@@ -18,7 +18,13 @@ app.disable("x-powered-by");
 const nodeCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
 const nodeCacheAdapter = new NodeCacheAdapter({ nodeCache });
 
-const endpointsCollection = new EndpointsCollection();
+export const endpointsCollection = new EndpointsCollection();
+
+export const openApiConfig = {
+  title: "Advanced API Documentation",
+  version: "1.0.0",
+  servers: ["http://localhost:3000"],
+};
 
 const logRequest = (req: Request, res: Response, next: Function) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -477,24 +483,24 @@ endpointsCollection.post(
 
 app.use(endpointsCollection.getRouter());
 
-app.get("/openapi", (req, res) => {
+app.get("/openapi.yaml", (req, res) => {
   res.setHeader("Content-Type", "text/yaml");
   return res.send(
     generateOpenAPI({
-      title: "Advanced API Documentation",
-      version: "1.0.0",
+      ...openApiConfig,
       endpoints: endpointsCollection.getEndpoints(),
-      servers: ["http://localhost:3000"],
     }),
   );
 });
 
 app.use(errorHandler);
 
-app.listen(port, () => {
-  console.info({
-    sdk: process.version,
-    datetime: new Date().toISOString(),
+if (require.main === module) {
+  app.listen(port, () => {
+    console.info({
+      sdk: process.version,
+      datetime: new Date().toISOString(),
+    });
+    console.info(`Server is running on port ${port}`);
   });
-  console.info(`Server is running on port ${port}`);
-});
+}

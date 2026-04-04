@@ -10,17 +10,19 @@ You can configure exposed endpoints, request and response schemas, and validatio
 
 ![output](./img/output1.png)
 
+For support of zod v3 and express v4 use 1.0.28
+
 ## Features
 
-- Fully typed endpoints (TypeScript hints and checks)
+- Fully typed endpoints (TypeScript hints and checks) for Express v5
   - Request body
   - Response body
   - Query parameters
   - Path parameters
   - Headers
-- Automatic OpenAPI 3 schema generation
-- Request and response validation using Zod
-- Middleware support
+- Automatic OpenAPI 3.0 schema generation
+- Request and response validation using Zod v4
+- Full middleware support
 - Minimal setup
 
 ## Installation

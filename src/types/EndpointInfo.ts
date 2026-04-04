@@ -1,17 +1,17 @@
 import { HttpMethod } from "./HttpMethod";
-import { AnyZodObject } from "zod";
+import type { ZodObject, ZodTypeAny } from "zod";
 
 export type EndpointInputSchema = {
-  query?: AnyZodObject;
-  body?: AnyZodObject;
-  params?: AnyZodObject;
-  headers?: AnyZodObject;
+  query?: ZodObject;
+  body?: ZodObject;
+  params?: ZodObject;
+  headers?: ZodObject;
 };
 
 export type EndpointOutputSchema = {
   status: number;
   description?: string;
-  body?: AnyZodObject;
+  body?: ZodTypeAny;
 }[];
 
 export type EndpointInfo = {

@@ -1,37 +1,41 @@
 {
   "name": "express-endpoints-collection",
-  "version": "1.0.28",
+  "version": "2.0.0",
   "main": "./dist/index.js",
   "repository": "https://github.com/pilotpirxie/express-endpoints-collection.git",
   "author": "pilotpirxie <10637666+pilotpirxie@users.noreply.github.com>",
   "license": "MIT",
   "types": "./dist/index.d.ts",
   "devDependencies": {
-    "@types/express": "^4.17.21",
+    "@types/express": "^5.0.6",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.8",
-    "@types/node": "^22.12.0",
-    "body-parser": "^1.20.3",
+    "@types/node": "^24.1.0",
+    "body-parser": "^2.2.2",
     "jsonwebtoken": "^9.0.2",
+    "knip": "^6.2.0",
     "node-cache": "^5.1.2",
-    "prettier": "3.4.2",
+    "prettier": "3.8.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "tsx": "^4.19.2",
+    "typescript": "^6.0.2"
   },
   "scripts": {
-    "prettier": "prettier --write .",
+    "fix": "prettier --write .",
     "dev": "ts-node ./example/app.ts",
     "minimal": "ts-node ./example/minimal.ts",
     "multiple": "ts-node ./example/multiple.ts",
     "middlewares": "ts-node ./example/middlewares.ts",
     "build": "tsc",
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "test": "tsc --noEmit && tsc --noEmit -p tsconfig.spec.json && tsc --noEmit -p tsconfig.example.json && node --import tsx --test --experimental-test-coverage \"src/**/*.spec.ts\" \"examples/**/*.spec.ts\"",
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.example.json && prettier --write . && knip"
   },
   "dependencies": {
-    "@asteasolutions/zod-to-openapi": "^7.3.0",
-    "express": "^4.21.2",
+    "@asteasolutions/zod-to-openapi": "^8.5.0",
+    "express": "^5.2.1",
     "js-yaml": "^4.1.0",
-    "zod": "^3.24.1"
+    "zod": "^4.3.6"
   },
   "files": [
     "dist"

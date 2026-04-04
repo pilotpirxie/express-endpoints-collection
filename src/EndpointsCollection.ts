@@ -13,7 +13,7 @@ import {
 import { CustomErrorHandler } from "./types/CustomErrorHandler";
 import { ParamsDictionary, Query } from "express-serve-static-core";
 import { IncomingHttpHeaders } from "http";
-import { AnyZodObject, z } from "zod";
+import { z } from "zod";
 import { HttpMethod } from "./types/HttpMethod";
 import { EndpointArgs } from "./types/EndpointArgs";
 import { TypedRequestHandler } from "./types/TypedRequestHandler";
@@ -35,12 +35,22 @@ export class EndpointsCollection {
     this.customErrorHandler = customErrorHandler;
   }
 
+  private setRequestQuery(req: Request, query: Query): void {
+    Object.defineProperty(req, "query", {
+      value: query,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
   private validateInput(schema: EndpointInputSchema) {
     return (req: Request, res: Response, next: NextFunction) => {
       try {
         if (schema.query) {
-          req.query = this.coerceAll(schema.query, req.query) as Query;
-          req.query = schema.query.parse(req.query);
+          let query = this.coerceAll(schema.query, req.query) as Query;
+          query = schema.query.parse(query) as Query;
+          this.setRequestQuery(req, query);
         }
         if (schema.body) {
           req.body = this.coerceAll(schema.body, req.body);
@@ -51,14 +61,16 @@ export class EndpointsCollection {
             schema.params,
             req.params,
           ) as ParamsDictionary;
-          req.params = schema.params.parse(req.params);
+          req.params = schema.params.parse(req.params) as ParamsDictionary;
         }
         if (schema.headers) {
           req.headers = this.coerceAll(
             schema.headers,
             req.headers,
           ) as IncomingHttpHeaders;
-          req.headers = schema.headers.parse(req.headers);
+          req.headers = schema.headers.parse(
+            req.headers,
+          ) as IncomingHttpHeaders;
         }
         next();
       } catch (error) {
@@ -66,11 +78,11 @@ export class EndpointsCollection {
           if (this.customErrorHandler) {
             return res
               .status(400)
-              .json(this.customErrorHandler(error, error.errors));
+              .json(this.customErrorHandler(error, error.issues));
           }
 
           return res.status(400).json({
-            error: error.errors,
+            error: error.issues,
           });
         }
         next(error);
@@ -78,12 +90,16 @@ export class EndpointsCollection {
     };
   }
 
-  private coerceAll(schema: AnyZodObject, data: any) {
+  private coerceAll(schema: z.ZodObject, data: unknown) {
+    const record =
+      data !== null && typeof data === "object" && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {};
     const deepClone: Record<string, unknown> = {};
     for (const key in schema.shape) {
-      const coerced = this.coerceOnly(schema.shape[key], data[key]);
+      const coerced = this.coerceOnly(schema.shape[key], record[key]);
 
-      deepClone[key] = coerced.success ? coerced.data : data[key];
+      deepClone[key] = coerced.success ? coerced.data : record[key];
     }
 
     return deepClone;
@@ -92,7 +108,7 @@ export class EndpointsCollection {
   private coerceOnly(
     schema: z.ZodTypeAny,
     value: unknown,
-  ): z.SafeParseReturnType<unknown, unknown> {
+  ): z.ZodSafeParseResult<unknown> {
     if (value === undefined) {
       return {
         success: true,
@@ -111,22 +127,22 @@ export class EndpointsCollection {
     } else if (schema instanceof z.ZodArray) {
       if (Array.isArray(value)) {
         const coercedArray = value.map((item) =>
-          this.coerceOnly(schema.element, item),
+          this.coerceOnly(schema.element as z.ZodTypeAny, item),
         );
         return z
-          .array(z.any())
+          .array(z.unknown())
           .safeParse(
             coercedArray.map((result) =>
               result.success ? result.data : result.error,
             ),
           );
       }
-      return z.array(z.any()).safeParse(value);
+      return z.array(z.unknown()).safeParse(value);
     } else if (schema instanceof z.ZodObject) {
       if (typeof value === "object" && value !== null) {
         const coercedObject: Record<string, unknown> = {};
         for (const [key, propertySchema] of Object.entries(schema.shape)) {
-          const propertyValue = (value as any)[key];
+          const propertyValue = (value as Record<string, unknown>)[key];
           const coercedProperty = this.coerceOnly(
             propertySchema as z.ZodTypeAny,
             propertyValue,
@@ -140,7 +156,7 @@ export class EndpointsCollection {
       return z.object(schema.shape).safeParse(value);
     } else if (schema instanceof z.ZodUnion) {
       for (const unionSchema of schema.options) {
-        const coerced = this.coerceOnly(unionSchema, value);
+        const coerced = this.coerceOnly(unionSchema as z.ZodTypeAny, value);
         if (coerced.success) {
           return coerced;
         }
@@ -149,7 +165,7 @@ export class EndpointsCollection {
     } else if (schema instanceof z.ZodLiteral) {
       return schema.safeParse(value);
     } else if (schema instanceof z.ZodOptional) {
-      return this.coerceOnly(schema._def.innerType, value);
+      return this.coerceOnly(schema.def.innerType as z.ZodTypeAny, value);
     } else {
       return schema.safeParse(value);
     }
@@ -187,8 +203,18 @@ export class EndpointsCollection {
 
     const combinedHandlers: (RequestHandler[] | RequestHandler)[] = [];
 
+    const asExpressHandler = (
+      h: RequestHandler | TypedRequestHandler<TInput, TOutput>,
+    ) => h as unknown as RequestHandler;
+
     if (beforeInputValidation) {
-      combinedHandlers.push(...beforeInputValidation);
+      for (const item of beforeInputValidation) {
+        if (Array.isArray(item)) {
+          combinedHandlers.push(item.map(asExpressHandler));
+        } else {
+          combinedHandlers.push(asExpressHandler(item));
+        }
+      }
     }
 
     if (inputSchema) {
@@ -196,13 +222,25 @@ export class EndpointsCollection {
     }
 
     if (afterInputValidation) {
-      combinedHandlers.push(...afterInputValidation);
+      for (const item of afterInputValidation) {
+        if (Array.isArray(item)) {
+          combinedHandlers.push(item.map(asExpressHandler));
+        } else {
+          combinedHandlers.push(asExpressHandler(item));
+        }
+      }
     }
 
-    combinedHandlers.push(handler);
+    combinedHandlers.push(handler as unknown as RequestHandler);
 
     if (beforeResponse) {
-      combinedHandlers.push(...beforeResponse);
+      for (const item of beforeResponse) {
+        if (Array.isArray(item)) {
+          combinedHandlers.push(item.map(asExpressHandler));
+        } else {
+          combinedHandlers.push(asExpressHandler(item));
+        }
+      }
     }
 
     return this.router[method](pathToUse, ...combinedHandlers);
