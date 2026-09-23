@@ -1,14 +1,13 @@
 import express, { Express } from "express";
 import bodyParser from "body-parser";
-import { z } from "zod";
-import { EndpointsCollection } from "../src";
-import { generateOpenAPI } from "../src";
-import { jwtVerify } from "./middlewares/jwt";
+import { EndpointsCollection, generateOpenAPI, z } from "../src";
 
 const app: Express = express();
 app.use(bodyParser.json());
 
-export const endpointsCollection = new EndpointsCollection();
+export const endpointsCollection = new EndpointsCollection({
+  middlewares: { jwt: { secret: "secret", enabled: true } },
+});
 
 export const openApiConfig = {
   title: "Multiple demo",
@@ -58,7 +57,6 @@ endpointsCollection.post(
       },
     ],
     summary: "Add two numbers",
-    afterInputValidation: [jwtVerify("secret")],
   },
   (req, res) => {
     const { a, b } = req.body;

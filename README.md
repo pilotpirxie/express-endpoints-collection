@@ -214,6 +214,67 @@ Type inference and checks:
 
 ![infer1](./img/infer1.png)
 
-### License
+## Built-in middlewares
 
-MIT
+Import `z` from this package so request schemas use the same Zod instance the collection validates with.
+
+```typescript
+import {
+  defineMiddlewares,
+  EndpointsCollection,
+  z,
+} from "express-endpoints-collection";
+
+const api = defineMiddlewares({
+  customErrorHandler: (_error, details) => ({
+    error: "ValidationError",
+    details,
+  }),
+  middlewares: {
+    requestLogger: { enabled: true },
+    jwt: { secret: process.env.JWT_SECRET ?? "dev-secret" },
+    cache: { stdTTL: 60, checkperiod: 120 },
+    rateLimit: { windowMs: 60_000, limit: 30 },
+    errorHandler: { enabled: true },
+  },
+});
+
+const shops = new EndpointsCollection({
+  collectionPrefix: "/shops",
+  ...api,
+});
+
+const account = new EndpointsCollection({
+  collectionPrefix: "/account",
+  ...api,
+  middlewares: {
+    ...api.middlewares,
+    jwt: { ...api.middlewares.jwt, enabled: true },
+  },
+});
+
+shops.get(
+  "/",
+  {
+    outputSchema: [{ status: 200, body: z.object({ ok: z.boolean() }) }],
+    middlewares: { cache: true, rateLimit: { limit: 10 } },
+  },
+  (_req, res) => {
+    res.json({ ok: true });
+  },
+);
+```
+
+Collection `jwt: { secret }` with `enabled` omitted is settings only; routes stay open until they set `jwt: true` or a partial such as `jwt: { required: false }`. Collection `enabled: true` applies that middleware to every route unless the route sets `false`. The same rules apply to `requestLogger`, `cache`, `rateLimit`, and `errorHandler`. Per-route `cache: true` or `rateLimit: { limit: 10 }` still opt in when collection `enabled` is omitted.
+
+Replacing `jwt` with `{ enabled: true }` drops `secret`. Spread the preset first: `jwt: { ...api.middlewares.jwt, enabled: true }`.
+
+Other middleware still goes on `beforeInputValidation`, `afterInputValidation`, or `beforeResponse`. A cache hit returns before `beforeInputValidation`, so that hook does not run for a stored response. A per-route `checkperiod` is ignored. `stdTTL` on a route is the TTL for that route's cache entries. Client options such as `checkperiod` belong on the collection.
+
+## License
+
+This software is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+
+Anyone may use it under AGPLv3, including in a commercial product, if they comply with that license.
+
+For a written license without AGPL copyleft, contact the author on [GitHub](https://github.com/pilotpirxie). Until that agreement exists, AGPLv3 applies.

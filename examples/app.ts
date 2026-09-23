@@ -1,13 +1,11 @@
 import express, { Express, Request, Response } from "express";
 import bodyParser from "body-parser";
-import { EndpointsCollection } from "../src";
-import { z } from "zod";
-import NodeCache from "node-cache";
-import { NodeCacheAdapter } from "./middlewares/cacheStore";
-import cache from "./middlewares/cache";
-import { jwtVerify } from "./middlewares/jwt";
-import { generateOpenAPI } from "../src";
-import { errorHandler } from "./middlewares/errors";
+import {
+  defineMiddlewares,
+  EndpointsCollection,
+  generateOpenAPI,
+  z,
+} from "../src";
 
 const port = process.env.PORT || 3000;
 const app: Express = express();
@@ -15,10 +13,22 @@ app.set("trust proxy", true);
 app.use(bodyParser.json({ limit: process.env.MAX_BODY_SIZE || "1KB" }));
 app.disable("x-powered-by");
 
-const nodeCache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
-const nodeCacheAdapter = new NodeCacheAdapter({ nodeCache });
+const demo = defineMiddlewares({
+  middlewares: {
+    requestLogger: { enabled: false },
+    jwt: { secret: "your_jwt_secret", enabled: false },
+    cache: { stdTTL: 60, checkperiod: 120, enabled: false },
+    rateLimit: {
+      windowMs: 60_000,
+      limit: 30,
+      enabled: false,
+      validate: { trustProxy: false },
+    },
+    errorHandler: {},
+  },
+});
 
-export const endpointsCollection = new EndpointsCollection();
+export const endpointsCollection = new EndpointsCollection({ ...demo });
 
 export const openApiConfig = {
   title: "Advanced API Documentation",
@@ -128,7 +138,7 @@ endpointsCollection.get(
       },
     ],
     summary: "Get user profile",
-    beforeInputValidation: [jwtVerify("your_jwt_secret")],
+    middlewares: { jwt: true },
   },
   (req, res) => {
     const userId = parseInt(req.params.id);
@@ -172,7 +182,7 @@ endpointsCollection.put(
       },
     ],
     summary: "Update user profile",
-    beforeInputValidation: [jwtVerify("your_jwt_secret")],
+    middlewares: { jwt: true },
   },
   (req, res) => {
     const userId = parseInt(req.params.id);
@@ -204,7 +214,7 @@ endpointsCollection.get(
       },
     ],
     summary: "Get posts with pagination",
-    beforeInputValidation: [cache(nodeCacheAdapter)],
+    middlewares: { cache: true },
   },
   (req, res) => {
     const limit = parseInt(req.query.limit as string) || 10;
@@ -355,7 +365,7 @@ endpointsCollection.get(
       },
     ],
     summary: "Advanced product search",
-    beforeInputValidation: [cache(nodeCacheAdapter)],
+    middlewares: { cache: true },
   },
   (req, res) => {
     const products = Array.from({ length: 10 }, (_, i) => ({
@@ -417,7 +427,7 @@ endpointsCollection.post(
       },
     ],
     summary: "Upload multiple files",
-    beforeInputValidation: [jwtVerify("your_jwt_secret")],
+    middlewares: { jwt: true, rateLimit: true },
   },
   (req, res) => {
     const { files } = req.body;
@@ -492,8 +502,6 @@ app.get("/openapi.yaml", (req, res) => {
     }),
   );
 });
-
-app.use(errorHandler);
 
 if (require.main === module) {
   app.listen(port, () => {

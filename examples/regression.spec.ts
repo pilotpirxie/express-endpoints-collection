@@ -181,6 +181,243 @@ paths:
                     type: number
                 required:
                   - result
+  /login:
+    post:
+      summary: User login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                required:
+                  - token
+  /me:
+    get:
+      summary: Current user
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum:
+                      - true
+                  userId:
+                    type: string
+                required:
+                  - ok
+                  - userId
+  /preview:
+    get:
+      summary: Optional auth preview
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - ok
+  /posts:
+    get:
+      summary: List posts
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: number
+                        title:
+                          type: string
+                      required:
+                        - id
+                        - title
+                required:
+                  - posts
+  /burst:
+    post:
+      summary: Burst endpoint
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - ok
+  /traced:
+    get:
+      summary: Traced
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - ok
+  /quiet:
+    get:
+      summary: Skip request log
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - ok
+  /item:
+    get:
+      summary: Cached item
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: query
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                required:
+                  - id
+                  - title
+  /boom:
+    get:
+      summary: Mapped error
+      responses:
+        '422':
+          description: Response for status code 422
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /ready:
+    get:
+      summary: Before response
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    enum:
+                      - true
+                required:
+                  - ok
+  /echo:
+    post:
+      summary: Echo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+              required:
+                - message
+      responses:
+        '200':
+          description: Response for status code 200
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+        '400':
+          description: Response for status code 400
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  details:
+                    nullable: true
+                required:
+                  - error
 `;
 
 export const APP = `openapi: 3.0.0

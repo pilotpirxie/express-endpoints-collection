@@ -17,22 +17,45 @@ import { z } from "zod";
 import { HttpMethod } from "./types/HttpMethod";
 import { EndpointArgs } from "./types/EndpointArgs";
 import { TypedRequestHandler } from "./types/TypedRequestHandler";
+import { CollectionMiddlewares } from "./types/CollectionMiddlewares";
+import { CacheStore, createNodeCacheStore } from "./middlewares/cache";
+import { createRateLimiter } from "./middlewares/rateLimit";
+import { resolveMiddlewares } from "./middlewares/resolveMiddlewares";
 
 export class EndpointsCollection {
   private endpoints: EndpointInfo[] = [];
   private router = Router();
   private readonly collectionPrefix?: string;
   private readonly customErrorHandler?: CustomErrorHandler;
+  private readonly middlewares?: CollectionMiddlewares;
+  private readonly cacheStore?: CacheStore;
+  private readonly defaultRateLimiter?: RequestHandler;
 
   public constructor({
     collectionPrefix,
     customErrorHandler,
+    middlewares,
   }: {
     collectionPrefix?: string;
     customErrorHandler?: CustomErrorHandler;
+    middlewares?: CollectionMiddlewares;
   } = {}) {
     this.collectionPrefix = collectionPrefix;
     this.customErrorHandler = customErrorHandler;
+    this.middlewares = middlewares;
+
+    if (middlewares?.cache) {
+      const {
+        enabled: _enabled,
+        key: _key,
+        ...nodeCacheOptions
+      } = middlewares.cache;
+      this.cacheStore = createNodeCacheStore(nodeCacheOptions);
+    }
+
+    if (middlewares?.rateLimit) {
+      this.defaultRateLimiter = createRateLimiter(middlewares.rateLimit);
+    }
   }
 
   private setRequestQuery(req: Request, query: Query): void {
@@ -44,7 +67,10 @@ export class EndpointsCollection {
     });
   }
 
-  private validateInput(schema: EndpointInputSchema) {
+  private validateInput(
+    schema: EndpointInputSchema,
+    customErrorHandler: CustomErrorHandler | undefined,
+  ) {
     return (req: Request, res: Response, next: NextFunction) => {
       try {
         if (schema.query) {
@@ -75,10 +101,10 @@ export class EndpointsCollection {
         next();
       } catch (error) {
         if (error instanceof z.ZodError) {
-          if (this.customErrorHandler) {
+          if (customErrorHandler) {
             return res
               .status(400)
-              .json(this.customErrorHandler(error, error.issues));
+              .json(customErrorHandler(error, error.issues));
           }
 
           return res.status(400).json({
@@ -185,6 +211,8 @@ export class EndpointsCollection {
       beforeInputValidation = [],
       afterInputValidation = [],
       beforeResponse = [],
+      middlewares,
+      customErrorHandler,
     }: EndpointArgs<TInput, TOutput>,
     handler: TypedRequestHandler<TInput, TOutput>,
   ) {
@@ -207,6 +235,26 @@ export class EndpointsCollection {
       h: RequestHandler | TypedRequestHandler<TInput, TOutput>,
     ) => h as unknown as RequestHandler;
 
+    const resolved = resolveMiddlewares({
+      collection: this.middlewares,
+      endpoint: middlewares,
+      cacheStore: this.cacheStore,
+      defaultRateLimiter: this.defaultRateLimiter,
+    });
+
+    if (resolved.requestLogger) {
+      combinedHandlers.push(resolved.requestLogger);
+    }
+    if (resolved.rateLimiter) {
+      combinedHandlers.push(resolved.rateLimiter);
+    }
+    if (resolved.jwt) {
+      combinedHandlers.push(resolved.jwt);
+    }
+    if (resolved.cache) {
+      combinedHandlers.push(resolved.cache);
+    }
+
     if (beforeInputValidation) {
       for (const item of beforeInputValidation) {
         if (Array.isArray(item)) {
@@ -218,7 +266,12 @@ export class EndpointsCollection {
     }
 
     if (inputSchema) {
-      combinedHandlers.push(this.validateInput(inputSchema));
+      combinedHandlers.push(
+        this.validateInput(
+          inputSchema,
+          customErrorHandler ?? this.customErrorHandler,
+        ),
+      );
     }
 
     if (afterInputValidation) {
@@ -241,6 +294,10 @@ export class EndpointsCollection {
           combinedHandlers.push(asExpressHandler(item));
         }
       }
+    }
+
+    if (resolved.errorHandler) {
+      combinedHandlers.push(resolved.errorHandler as unknown as RequestHandler);
     }
 
     return this.router[method](pathToUse, ...combinedHandlers);

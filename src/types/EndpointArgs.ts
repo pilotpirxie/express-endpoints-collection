@@ -1,4 +1,6 @@
 import { RequestHandler } from "express";
+import { CustomErrorHandler } from "./CustomErrorHandler";
+import { EndpointMiddlewares } from "./CollectionMiddlewares";
 import { EndpointInputSchema, EndpointOutputSchema } from "./EndpointInfo";
 import { TypedRequestHandler } from "./TypedRequestHandler";
 
@@ -19,4 +21,6 @@ export type EndpointArgs<
     | TypedRequestHandler<TInput, TOutput>
     | TypedRequestHandler<TInput, TOutput>[]
   )[];
+  middlewares?: EndpointMiddlewares;
+  customErrorHandler?: CustomErrorHandler;
 };
