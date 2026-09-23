@@ -1246,6 +1246,268 @@ describe("built-in middlewares", () => {
     );
   });
 
+  it("should leave timeout off when the collection does not set enabled true", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timeout: { ms: 50 } },
+    });
+    collection.get("/open", { outputSchema: emptyOkOutput }, (_req, res) => {
+      setTimeout(() => {
+        res.status(200).json({ ok: true });
+      }, 80);
+    });
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/open`);
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), { ok: true });
+      },
+    );
+  });
+
+  it("should send 503 when timeout is enabled and the handler is slow", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timeout: { ms: 50 } },
+    });
+    collection.get(
+      "/slow",
+      { outputSchema: emptyOkOutput, middlewares: { timeout: true } },
+      (_req, res) => {
+        setTimeout(() => {
+          res.status(200).json({ ok: true });
+        }, 80);
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/slow`);
+        assert.equal(response.status, 503);
+        assert.deepEqual(await response.json(), { error: "Request Timeout" });
+      },
+    );
+  });
+
+  it("should skip timeout when the endpoint sets timeout false", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timeout: { ms: 50, enabled: true } },
+    });
+    collection.get(
+      "/open",
+      { outputSchema: emptyOkOutput, middlewares: { timeout: false } },
+      (_req, res) => {
+        setTimeout(() => {
+          res.status(200).json({ ok: true });
+        }, 80);
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/open`);
+        assert.equal(response.status, 200);
+        assert.deepEqual(await response.json(), { ok: true });
+      },
+    );
+  });
+
+  it("should use a per-route timeout ms override", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timeout: { ms: 5_000 } },
+    });
+    collection.get(
+      "/slow",
+      { outputSchema: emptyOkOutput, middlewares: { timeout: { ms: 50 } } },
+      (_req, res) => {
+        setTimeout(() => {
+          res.status(200).json({ ok: true });
+        }, 80);
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/slow`);
+        assert.equal(response.status, 503);
+        assert.deepEqual(await response.json(), { error: "Request Timeout" });
+      },
+    );
+  });
+
+  it("should ignore a late handler body after timeout", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timeout: { ms: 50 } },
+    });
+    collection.get(
+      "/slow",
+      { outputSchema: emptyOkOutput, middlewares: { timeout: true } },
+      (_req, res) => {
+        setTimeout(() => {
+          res.status(200).json({ ok: true });
+        }, 80);
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/slow`);
+        assert.equal(response.status, 503);
+        assert.deepEqual(await response.json(), { error: "Request Timeout" });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      },
+    );
+  });
+
+  it("should leave timingPad off when the collection does not set enabled true", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timingPad: { ms: 80 } },
+    });
+    collection.get("/open", { outputSchema: emptyOkOutput }, (_req, res) => {
+      res.status(200).json({ ok: true });
+    });
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const started = Date.now();
+        const response = await fetch(`${baseUrl}/open`);
+        const elapsed = Date.now() - started;
+        assert.equal(response.status, 200);
+        assert.ok(elapsed < 80);
+      },
+    );
+  });
+
+  it("should wait at least timingPad ms before sending", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timingPad: { ms: 80 } },
+    });
+    collection.get(
+      "/padded",
+      { outputSchema: emptyOkOutput, middlewares: { timingPad: true } },
+      (_req, res) => {
+        res.status(200).json({ ok: true });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const started = Date.now();
+        const response = await fetch(`${baseUrl}/padded`);
+        const elapsed = Date.now() - started;
+        assert.equal(response.status, 200);
+        assert.ok(elapsed >= 80);
+      },
+    );
+  });
+
+  it("should pad a JWT 401 when timingPad is on", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: {
+        jwt: { secret },
+        timingPad: { ms: 80 },
+      },
+    });
+    collection.get(
+      "/private",
+      {
+        outputSchema: emptyOkOutput,
+        middlewares: { jwt: true, timingPad: true },
+      },
+      (_req, res) => {
+        res.status(200).json({ ok: true });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const started = Date.now();
+        const response = await fetch(`${baseUrl}/private`);
+        const elapsed = Date.now() - started;
+        assert.equal(response.status, 401);
+        assert.ok(elapsed >= 80);
+      },
+    );
+  });
+
+  it("should throw when timeout ms is not greater than timingPad ms", () => {
+    const collection = new EndpointsCollection({
+      middlewares: {
+        timeout: { ms: 50, enabled: true },
+        timingPad: { ms: 80, enabled: true },
+      },
+    });
+    assert.throws(
+      () => {
+        collection.get("/x", { outputSchema: emptyOkOutput }, (_req, res) => {
+          res.status(200).json({ ok: true });
+        });
+      },
+      (error: unknown) =>
+        error instanceof Error &&
+        error.message ===
+          'Middleware "timeout" ms must be greater than "timingPad" ms',
+    );
+  });
+
+  it("should throw when timeout is enabled without collection config", () => {
+    const collection = new EndpointsCollection();
+    assert.throws(
+      () => {
+        collection.get(
+          "/x",
+          { outputSchema: emptyOkOutput, middlewares: { timeout: true } },
+          (_req, res) => {
+            res.status(200).json({ ok: true });
+          },
+        );
+      },
+      (error: unknown) =>
+        error instanceof Error &&
+        error.message ===
+          'Middleware "timeout" is not configured on this collection',
+    );
+  });
+
+  it("should throw when timeout ms is not a positive number", () => {
+    const collection = new EndpointsCollection({
+      middlewares: { timeout: { ms: 0, enabled: true } },
+    });
+    assert.throws(
+      () => {
+        collection.get("/x", { outputSchema: emptyOkOutput }, (_req, res) => {
+          res.status(200).json({ ok: true });
+        });
+      },
+      (error: unknown) =>
+        error instanceof Error &&
+        error.message === 'Middleware "timeout" is missing ms',
+    );
+  });
+
   it("should return the same object from defineMiddlewares and the library z", () => {
     const config = {
       middlewares: { jwt: { secret, enabled: false as const } },

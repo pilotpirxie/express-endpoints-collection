@@ -236,6 +236,8 @@ const api = defineMiddlewares({
     cache: { stdTTL: 60, checkperiod: 120 },
     rateLimit: { windowMs: 60_000, limit: 30 },
     errorHandler: { enabled: true },
+    timeout: { ms: 5_000 },
+    timingPad: { ms: 200 },
   },
 });
 
@@ -265,9 +267,11 @@ shops.get(
 );
 ```
 
-Collection `jwt: { secret }` with `enabled` omitted is settings only; routes stay open until they set `jwt: true` or a partial such as `jwt: { required: false }`. Collection `enabled: true` applies that middleware to every route unless the route sets `false`. The same rules apply to `requestLogger`, `cache`, `rateLimit`, and `errorHandler`. Per-route `cache: true` or `rateLimit: { limit: 10 }` still opt in when collection `enabled` is omitted.
+Collection `jwt: { secret }` with `enabled` omitted is settings only; routes stay open until they set `jwt: true` or a partial such as `jwt: { required: false }`. Collection `enabled: true` applies that middleware to every route unless the route sets `false`. The same rules apply to `requestLogger`, `cache`, `rateLimit`, `errorHandler`, `timeout`, and `timingPad`. Per-route `cache: true` or `rateLimit: { limit: 10 }` still opt in when collection `enabled` is omitted.
 
 Replacing `jwt` with `{ enabled: true }` drops `secret`. Spread the preset first: `jwt: { ...api.middlewares.jwt, enabled: true }`.
+
+`timingPad` is a response-time floor, not constant-time crypto. It pads every status on that route. If `timeout` and `timingPad` are both on, `timeout.ms` must be greater than `timingPad.ms`. `timeout` is not Slowloris protection; set HTTP server or proxy timeouts for that. After a timeout 503, a late `res.json` is ignored; the handler keeps running unless it checks `res.headersSent`.
 
 Other middleware still goes on `beforeInputValidation`, `afterInputValidation`, or `beforeResponse`. A cache hit returns before `beforeInputValidation`, so that hook does not run for a stored response. A per-route `checkperiod` is ignored. `stdTTL` on a route is the TTL for that route's cache entries. Client options such as `checkperiod` belong on the collection.
 

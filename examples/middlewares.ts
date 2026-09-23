@@ -43,6 +43,8 @@ const demo = defineMiddlewares({
       limit: 30,
       validate: { trustProxy: false },
     },
+    timeout: { ms: 2_000 },
+    timingPad: { ms: 200 },
     errorHandler: {
       enabled: true,
       onError: (err) => {
@@ -121,6 +123,7 @@ endpointsCollection.post(
       },
     ],
     summary: "User login",
+    middlewares: { timingPad: true },
   },
   (_req, res) => {
     res.json({ token: jwt.sign({ sub: "1" }, "secret") });
@@ -326,6 +329,23 @@ endpointsCollection.post(
   },
   (req, res) => {
     res.json({ message: req.body.message });
+  },
+);
+
+endpointsCollection.get(
+  "/hang",
+  {
+    outputSchema: [
+      {
+        status: 503,
+        body: z.object({ error: z.string() }),
+      },
+    ],
+    summary: "Timed out",
+    middlewares: { timeout: { ms: 50 } },
+  },
+  async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
   },
 );
 

@@ -8,14 +8,20 @@ import type {
   MiddlewareOverride,
   RateLimitMiddlewareConfig,
   RequestLoggerMiddlewareConfig,
+  TimeoutMiddlewareConfig,
+  TimingPadMiddlewareConfig,
 } from "../types/CollectionMiddlewares";
 import { CacheStore, cacheMiddleware } from "./cache";
 import { errorHandlerMiddleware } from "./errorHandler";
 import { jwtMiddleware } from "./jwt";
 import { createRateLimiter } from "./rateLimit";
 import { requestLoggerMiddleware } from "./requestLogger";
+import { timeoutMiddleware } from "./timeout";
+import { timingPadMiddleware } from "./timingPad";
 
 export type ResolvedMiddleware = {
+  timingPad?: RequestHandler;
+  timeout?: RequestHandler;
   requestLogger?: RequestHandler;
   rateLimiter?: RequestHandler;
   jwt?: RequestHandler;
@@ -25,6 +31,13 @@ export type ResolvedMiddleware = {
 
 function unconfigured(name: string): Error {
   return new Error(`Middleware "${name}" is not configured on this collection`);
+}
+
+function requirePositiveMs(name: string, ms: unknown): number {
+  if (typeof ms !== "number" || !Number.isFinite(ms) || ms <= 0) {
+    throw new Error(`Middleware "${name}" is missing ms`);
+  }
+  return ms;
 }
 
 function resolveOverride<T extends { enabled?: boolean }>(
@@ -122,6 +135,28 @@ export function resolveMiddlewares(input: {
     collection?.errorHandler,
     endpoint?.errorHandler,
   );
+  const timeout = resolveOverride<TimeoutMiddlewareConfig>(
+    "timeout",
+    collection?.timeout,
+    endpoint?.timeout,
+  );
+  const timingPad = resolveOverride<TimingPadMiddlewareConfig>(
+    "timingPad",
+    collection?.timingPad,
+    endpoint?.timingPad,
+  );
+
+  if (timeout) {
+    requirePositiveMs("timeout", timeout.ms);
+  }
+  if (timingPad) {
+    requirePositiveMs("timingPad", timingPad.ms);
+  }
+  if (timeout && timingPad && timeout.ms <= timingPad.ms) {
+    throw new Error(
+      'Middleware "timeout" ms must be greater than "timingPad" ms',
+    );
+  }
 
   let rateLimiter: RequestHandler | undefined;
   if (rateLimit) {
@@ -137,6 +172,8 @@ export function resolveMiddlewares(input: {
   }
 
   return {
+    timingPad: timingPad ? timingPadMiddleware(timingPad.ms) : undefined,
+    timeout: timeout ? timeoutMiddleware(timeout) : undefined,
     requestLogger: requestLogger
       ? requestLoggerMiddleware(requestLogger.log)
       : undefined,

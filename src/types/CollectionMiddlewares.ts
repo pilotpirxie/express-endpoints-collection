@@ -57,12 +57,26 @@ export type RequestLoggerMiddlewareConfig = {
   log?: (info: RequestLogInfo) => void;
 };
 
+export type TimeoutMiddlewareConfig = {
+  ms: number;
+  enabled?: boolean;
+  status?: number;
+  body?: unknown;
+};
+
+export type TimingPadMiddlewareConfig = {
+  ms: number;
+  enabled?: boolean;
+};
+
 export type CollectionMiddlewares = {
   requestLogger?: RequestLoggerMiddlewareConfig;
   jwt?: JwtMiddlewareConfig;
   cache?: CacheMiddlewareConfig;
   rateLimit?: RateLimitMiddlewareConfig;
   errorHandler?: ErrorMiddlewareConfig;
+  timeout?: TimeoutMiddlewareConfig;
+  timingPad?: TimingPadMiddlewareConfig;
 };
 
 export type CollectionConfig = {
@@ -78,4 +92,6 @@ export type EndpointMiddlewares = {
   cache?: MiddlewareOverride<CacheMiddlewareConfig>;
   rateLimit?: MiddlewareOverride<RateLimitMiddlewareConfig>;
   errorHandler?: MiddlewareOverride<ErrorMiddlewareConfig>;
+  timeout?: MiddlewareOverride<TimeoutMiddlewareConfig>;
+  timingPad?: MiddlewareOverride<TimingPadMiddlewareConfig>;
 };

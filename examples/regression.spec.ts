@@ -418,6 +418,21 @@ paths:
                     nullable: true
                 required:
                   - error
+  /hang:
+    get:
+      summary: Timed out
+      responses:
+        '503':
+          description: Response for status code 503
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
 `;
 
 export const APP = `openapi: 3.0.0

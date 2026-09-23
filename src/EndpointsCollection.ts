@@ -242,6 +242,12 @@ export class EndpointsCollection {
       defaultRateLimiter: this.defaultRateLimiter,
     });
 
+    if (resolved.timingPad) {
+      combinedHandlers.push(resolved.timingPad);
+    }
+    if (resolved.timeout) {
+      combinedHandlers.push(resolved.timeout);
+    }
     if (resolved.requestLogger) {
       combinedHandlers.push(resolved.requestLogger);
     }
