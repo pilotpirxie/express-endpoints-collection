@@ -1,14 +1,9 @@
 import express, { Express, Request, Response } from "express";
 import bodyParser from "body-parser";
-import {
-  defineMiddlewares,
-  EndpointsCollection,
-  generateOpenAPI,
-  z,
-} from "../src";
+import { defineMiddlewares, EndpointsApi, z } from "../src";
 
 const port = process.env.PORT || 3000;
-const app: Express = express();
+export const app: Express = express();
 app.set("trust proxy", true);
 app.use(bodyParser.json({ limit: process.env.MAX_BODY_SIZE || "1KB" }));
 app.disable("x-powered-by");
@@ -28,7 +23,8 @@ const demo = defineMiddlewares({
   },
 });
 
-export const endpointsCollection = new EndpointsCollection({ ...demo });
+export const api = new EndpointsApi({ ...demo });
+export const endpointsCollection = api.createEndpointsCollection();
 
 export const openApiConfig = {
   title: "Advanced API Documentation",
@@ -491,16 +487,11 @@ endpointsCollection.post(
   },
 );
 
-app.use(endpointsCollection.getRouter());
+app.use(api.getRouter());
 
 app.get("/openapi.yaml", (req, res) => {
   res.setHeader("Content-Type", "text/yaml");
-  return res.send(
-    generateOpenAPI({
-      ...openApiConfig,
-      endpoints: endpointsCollection.getEndpoints(),
-    }),
-  );
+  return res.send(api.generateOpenAPI(openApiConfig));
 });
 
 if (require.main === module) {

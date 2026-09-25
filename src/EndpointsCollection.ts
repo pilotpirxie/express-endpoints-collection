@@ -31,20 +31,30 @@ export class EndpointsCollection {
   private readonly cacheStore?: CacheStore;
   private readonly defaultRateLimiter?: RequestHandler;
 
+  /**
+   * @deprecated Use `new EndpointsApi(...).createEndpointsCollection(...)`.
+   */
   public constructor({
     collectionPrefix,
     customErrorHandler,
     middlewares,
+    shared,
   }: {
     collectionPrefix?: string;
     customErrorHandler?: CustomErrorHandler;
     middlewares?: CollectionMiddlewares;
+    shared?: {
+      cacheStore?: CacheStore;
+      defaultRateLimiter?: RequestHandler;
+    };
   } = {}) {
     this.collectionPrefix = collectionPrefix;
     this.customErrorHandler = customErrorHandler;
     this.middlewares = middlewares;
 
-    if (middlewares?.cache) {
+    if (shared?.cacheStore) {
+      this.cacheStore = shared.cacheStore;
+    } else if (middlewares?.cache) {
       const {
         enabled: _enabled,
         key: _key,
@@ -53,7 +63,9 @@ export class EndpointsCollection {
       this.cacheStore = createNodeCacheStore(nodeCacheOptions);
     }
 
-    if (middlewares?.rateLimit) {
+    if (shared?.defaultRateLimiter) {
+      this.defaultRateLimiter = shared.defaultRateLimiter;
+    } else if (middlewares?.rateLimit) {
       this.defaultRateLimiter = createRateLimiter(middlewares.rateLimit);
     }
   }

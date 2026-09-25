@@ -45,15 +45,15 @@ pnpm add express-endpoints-collection
 import express, { Express } from "express";
 import bodyParser from "body-parser";
 import { z } from "zod";
-import { EndpointsCollection } from "express-endpoints-collection";
-import { generateOpenAPI } from "express-endpoints-collection/generator";
+import { EndpointsApi } from "express-endpoints-collection";
 
 // 1. Create express app
 const app: Express = express();
 app.use(bodyParser.json());
 
-// 2. Create endpoints collection, this will store all your endpoints
-const endpointsCollection = new EndpointsCollection();
+// 2. Create the API, then a collection for its routes
+const api = new EndpointsApi();
+const endpointsCollection = api.createEndpointsCollection();
 
 // 3. Add new endpoint
 endpointsCollection.post(
@@ -82,17 +82,16 @@ endpointsCollection.post(
   },
 );
 
-// 5. Collection creates its own router, to use it just add it to your app
-app.use(endpointsCollection.getRouter());
+// 5. The API router mounts every collection
+app.use(api.getRouter());
 
 // 6. Expose OpenAPI 3 schema
 app.get("/openapi", (req, res) => {
   res.setHeader("Content-Type", "text/yaml");
   res.send(
-    generateOpenAPI({
+    api.generateOpenAPI({
       title: "Minimal demo",
       version: "1.0.0",
-      endpoints: endpointsCollection.getEndpoints(),
       servers: ["http://localhost:3000"],
     }),
   );
@@ -103,6 +102,8 @@ app.listen(3000, () => {
   console.info(`Server is running on port http://localhost:3000`);
 });
 ```
+
+`new EndpointsCollection()` still works and is deprecated. New code uses `EndpointsApi`.
 
 it will generate OpenAPI 3 definition as follow:
 
@@ -221,11 +222,11 @@ Import `z` from this package so request schemas use the same Zod instance the co
 ```typescript
 import {
   defineMiddlewares,
-  EndpointsCollection,
+  EndpointsApi,
   z,
 } from "express-endpoints-collection";
 
-const api = defineMiddlewares({
+const config = defineMiddlewares({
   customErrorHandler: (_error, details) => ({
     error: "ValidationError",
     details,
@@ -241,18 +242,13 @@ const api = defineMiddlewares({
   },
 });
 
-const shops = new EndpointsCollection({
-  collectionPrefix: "/shops",
-  ...api,
-});
+const api = new EndpointsApi(config);
 
-const account = new EndpointsCollection({
-  collectionPrefix: "/account",
-  ...api,
-  middlewares: {
-    ...api.middlewares,
-    jwt: { ...api.middlewares.jwt, enabled: true },
-  },
+const shops = api.createEndpointsCollection({ prefix: "/shops" });
+
+const account = api.createEndpointsCollection({
+  prefix: "/account",
+  middlewares: { jwt: { enabled: true } },
 });
 
 shops.get(
@@ -269,16 +265,14 @@ shops.get(
 
 Collection `jwt: { secret }` with `enabled` omitted is settings only; routes stay open until they set `jwt: true` or a partial such as `jwt: { required: false }`. Collection `enabled: true` applies that middleware to every route unless the route sets `false`. The same rules apply to `requestLogger`, `cache`, `rateLimit`, `errorHandler`, `timeout`, and `timingPad`. Per-route `cache: true` or `rateLimit: { limit: 10 }` still opt in when collection `enabled` is omitted.
 
-Replacing `jwt` with `{ enabled: true }` drops `secret`. Spread the preset first: `jwt: { ...api.middlewares.jwt, enabled: true }`.
+A collection `middlewares` object is merged onto the root, so `{ jwt: { enabled: true } }` keeps `secret`. Cache store options and rate-limit options (`windowMs`, `limit`, `stdTTL`, `checkperiod`) belong on `EndpointsApi`. A collection may set `cache: { enabled, key }` and `rateLimit: { enabled }` only.
 
 `timingPad` is a response-time floor, not constant-time crypto. It pads every status on that route. If `timeout` and `timingPad` are both on, `timeout.ms` must be greater than `timingPad.ms`. `timeout` is not Slowloris protection; set HTTP server or proxy timeouts for that. After a timeout 503, a late `res.json` is ignored; the handler keeps running unless it checks `res.headersSent`.
 
-Other middleware still goes on `beforeInputValidation`, `afterInputValidation`, or `beforeResponse`. A cache hit returns before `beforeInputValidation`, so that hook does not run for a stored response. A per-route `checkperiod` is ignored. `stdTTL` on a route is the TTL for that route's cache entries. Client options such as `checkperiod` belong on the collection.
+Other middleware still goes on `beforeInputValidation`, `afterInputValidation`, or `beforeResponse`. A cache hit returns before `beforeInputValidation`, so that hook does not run for a stored response. A per-route `checkperiod` is ignored. `stdTTL` on a route is the TTL for that route's cache entries. Client options such as `checkperiod` belong on `EndpointsApi`.
 
 ## License
 
-This software is licensed under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
-
-Anyone may use it under AGPLv3, including in a commercial product, if they comply with that license.
-
-For a written license without AGPL copyleft, contact the author on [GitHub](https://github.com/pilotpirxie). Until that agreement exists, AGPLv3 applies.
+```
+The core features of the Express Endpoints Collection are available free of charge under the Apache 2.0 licence; some features may be available upon purchase of a "Professional" EEC_API_KEY licence key
+```

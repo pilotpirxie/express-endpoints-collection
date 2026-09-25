@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { sign } from "jsonwebtoken";
@@ -1525,5 +1528,221 @@ describe("built-in middlewares", () => {
     assert.equal(endpointMiddlewares.jwt, false);
     assert.equal(collectionMiddlewares?.jwt?.secret, secret);
     assert.equal(collectionConfig, defined);
+  });
+
+  it("should coerce date, bigint, and union query values", async () => {
+    const collection = new EndpointsCollection();
+    const output = [
+      {
+        status: 200 as const,
+        body: z.object({
+          createdAfter: z.string(),
+          sku: z.string(),
+          status: z.union([z.literal("open"), z.number()]),
+        }),
+      },
+    ];
+    collection.get(
+      "/orders",
+      {
+        inputSchema: {
+          query: z.object({
+            createdAfter: z.date(),
+            sku: z.bigint(),
+            status: z.union([z.literal("open"), z.coerce.number()]),
+          }),
+        },
+        outputSchema: output,
+      },
+      (req, res) => {
+        assert.ok(req.query.createdAfter instanceof Date);
+        assert.equal(typeof req.query.sku, "bigint");
+        res.status(200).json({
+          createdAfter: req.query.createdAfter.toISOString(),
+          sku: req.query.sku.toString(),
+          status: req.query.status,
+        });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const open = await fetch(
+          `${baseUrl}/orders?createdAfter=2026-09-25&sku=42&status=open`,
+        );
+        const numbered = await fetch(
+          `${baseUrl}/orders?createdAfter=2026-09-25&sku=42&status=3`,
+        );
+        assert.equal(open.status, 200);
+        assert.equal(numbered.status, 200);
+        const openBody = (await open.json()) as { status: string; sku: string };
+        const numberedBody = (await numbered.json()) as { status: number };
+        assert.equal(openBody.sku, "42");
+        assert.equal(openBody.status, "open");
+        assert.equal(numberedBody.status, 3);
+      },
+    );
+  });
+
+  it("should cache a plain text send without forcing JSON", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: {
+        cache: { stdTTL: 60, checkperiod: 0, enabled: false },
+      },
+    });
+    let calls = 0;
+    collection.get(
+      "/note",
+      { outputSchema: emptyOkOutput, middlewares: { cache: true } },
+      (_req, res) => {
+        calls += 1;
+        res.send("ok");
+      },
+    );
+    collection.get(
+      "/note-json",
+      { outputSchema: emptyOkOutput, middlewares: { cache: true } },
+      (_req, res) => {
+        calls += 1;
+        res.send({ ok: true });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const first = await fetch(`${baseUrl}/note`);
+        const second = await fetch(`${baseUrl}/note`);
+        assert.equal(await first.text(), "ok");
+        assert.equal(await second.text(), "ok");
+        assert.equal(
+          second.headers.get("content-type")?.includes("application/json"),
+          false,
+        );
+
+        const jsonNote = await fetch(`${baseUrl}/note-json`);
+        const jsonNoteAgain = await fetch(`${baseUrl}/note-json`);
+        assert.deepEqual(await jsonNote.json(), { ok: true });
+        assert.deepEqual(await jsonNoteAgain.json(), { ok: true });
+        assert.equal(calls, 2);
+      },
+    );
+  });
+
+  it("should cache a rendered invoice", async () => {
+    const views = mkdtempSync(join(tmpdir(), "eec-views-"));
+    writeFileSync(join(views, "invoice.html"), "<p>unused</p>");
+    const collection = new EndpointsCollection({
+      middlewares: {
+        cache: { stdTTL: 60, checkperiod: 0, enabled: false },
+      },
+    });
+    let renders = 0;
+    collection.get(
+      "/invoice",
+      { outputSchema: emptyOkOutput, middlewares: { cache: true } },
+      (_req, res) => {
+        res.render("invoice");
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.engine("html", (_path, _options, callback) => {
+          renders += 1;
+          callback(null, "<p>invoice</p>");
+        });
+        app.set("views", views);
+        app.set("view engine", "html");
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const first = await fetch(`${baseUrl}/invoice`);
+        const second = await fetch(`${baseUrl}/invoice`);
+        assert.equal(await first.text(), "<p>invoice</p>");
+        assert.equal(await second.text(), "<p>invoice</p>");
+        assert.equal(renders, 1);
+      },
+    );
+  });
+
+  it("should reject when onVerified throws", async () => {
+    const collection = new EndpointsCollection({
+      middlewares: {
+        jwt: {
+          secret,
+          enabled: true,
+          onVerified: () => {
+            throw new Error("user lookup failed");
+          },
+        },
+      },
+    });
+    collection.get("/profile", { outputSchema: emptyOkOutput }, (_req, res) => {
+      res.status(200).json({ ok: true });
+    });
+
+    await withServer(
+      (app) => {
+        app.use(collection.getRouter());
+      },
+      async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/profile`, {
+          headers: { authorization: `Bearer ${token()}` },
+        });
+        assert.equal(response.status, 401);
+        assert.deepEqual(await response.json(), { error: "Unauthorized" });
+      },
+    );
+  });
+
+  it("should still respond when the cache store throws", async () => {
+    const logged: unknown[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      logged.push(args);
+    };
+    const collection = new EndpointsCollection({
+      middlewares: {
+        cache: { stdTTL: 60, checkperiod: 0, enabled: false },
+      },
+      shared: {
+        cacheStore: {
+          get: () => undefined,
+          set: () => {
+            throw new Error("cache down");
+          },
+          del: () => undefined,
+        },
+      },
+    });
+    collection.get(
+      "/orders",
+      { outputSchema: emptyOkOutput, middlewares: { cache: true } },
+      (_req, res) => {
+        res.status(200).json({ ok: true });
+      },
+    );
+
+    try {
+      await withServer(
+        (app) => {
+          app.use(collection.getRouter());
+        },
+        async (baseUrl) => {
+          const response = await fetch(`${baseUrl}/orders`);
+          assert.equal(response.status, 200);
+          assert.deepEqual(await response.json(), { ok: true });
+          assert.equal(logged.length, 2);
+        },
+      );
+    } finally {
+      console.error = originalError;
+    }
   });
 });

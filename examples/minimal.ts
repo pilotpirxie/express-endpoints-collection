@@ -1,13 +1,15 @@
 import express, { Express } from "express";
 import bodyParser from "body-parser";
-import { EndpointsCollection, generateOpenAPI, z } from "../src";
+import { EndpointsApi, z } from "../src";
 
 const app: Express = express();
 app.use(bodyParser.json());
 
-export const endpointsCollection = new EndpointsCollection({
+export const api = new EndpointsApi({
   middlewares: { jwt: { secret: "secret", enabled: true } },
 });
+
+export const endpointsCollection = api.createEndpointsCollection();
 
 export const openApiConfig = {
   title: "Minimal demo",
@@ -48,16 +50,11 @@ endpointsCollection.post(
   },
 );
 
-app.use(endpointsCollection.getRouter());
+app.use(api.getRouter());
 
 app.get("/openapi.yaml", (req, res) => {
   res.setHeader("Content-Type", "text/yaml");
-  return res.send(
-    generateOpenAPI({
-      ...openApiConfig,
-      endpoints: endpointsCollection.getEndpoints(),
-    }),
-  );
+  return res.send(api.generateOpenAPI(openApiConfig));
 });
 
 if (require.main === module) {

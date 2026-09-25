@@ -3,14 +3,13 @@ import express, { Express, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import {
   defineMiddlewares,
-  EndpointsCollection,
-  generateOpenAPI,
+  EndpointsApi,
   TypedRequest,
   TypedResponse,
   z,
 } from "../src";
 
-const app: Express = express();
+export const app: Express = express();
 app.use(bodyParser.json());
 
 const demo = defineMiddlewares({
@@ -56,7 +55,8 @@ const demo = defineMiddlewares({
   },
 });
 
-export const endpointsCollection = new EndpointsCollection({ ...demo });
+export const api = new EndpointsApi({ ...demo });
+export const endpointsCollection = api.createEndpointsCollection();
 
 export const openApiConfig = {
   title: "Middlewares demo",
@@ -349,16 +349,11 @@ endpointsCollection.get(
   },
 );
 
-app.use(endpointsCollection.getRouter());
+app.use(api.getRouter());
 
 app.get("/openapi.yaml", (req, res) => {
   res.setHeader("Content-Type", "text/yaml");
-  return res.send(
-    generateOpenAPI({
-      ...openApiConfig,
-      endpoints: endpointsCollection.getEndpoints(),
-    }),
-  );
+  return res.send(api.generateOpenAPI(openApiConfig));
 });
 
 if (require.main === module) {
