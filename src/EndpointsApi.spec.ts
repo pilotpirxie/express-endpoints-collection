@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, it, mock } from "node:test";
 import express, { type Express } from "express";
+import { getLicense } from "./license";
 import {
   EndpointsApi,
   type ChildMiddlewares,
@@ -20,8 +21,30 @@ const pathOutput = [
 ];
 
 function resetLicenseSlot(): void {
-  delete (globalThis as { [STORE]?: Promise<LicenseStatus> })[STORE];
+  delete (globalThis as { [STORE]?: unknown })[STORE];
   delete process.env.EEC_API_KEY;
+}
+
+async function settleValidLicense(): Promise<void> {
+  resetLicenseSlot();
+  process.env.EEC_API_KEY = "test-key";
+  const fetchMock = mock.method(
+    globalThis,
+    "fetch",
+    async () =>
+      new Response(JSON.stringify({ valid: true, expires_at: "2099-01-01" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  try {
+    const status = await getLicense();
+    if (status.state !== "valid") {
+      throw new Error(`expected valid license, received ${status.state}`);
+    }
+  } finally {
+    fetchMock.mock.restore();
+  }
 }
 
 afterEach(() => {
@@ -55,6 +78,7 @@ async function withServer(
 
 describe("EndpointsApi", () => {
   it("shares one cache across collections", async () => {
+    await settleValidLicense();
     let calls = 0;
     const api = new EndpointsApi({
       middlewares: {
@@ -97,6 +121,7 @@ describe("EndpointsApi", () => {
   });
 
   it("shares one rate limiter and keeps a per-route override separate", async () => {
+    await settleValidLicense();
     const api = new EndpointsApi({
       middlewares: {
         rateLimit: {

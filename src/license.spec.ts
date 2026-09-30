@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it, mock } from "node:test";
-import { getLicense, type LicenseStatus } from "./license";
+import { getLicense, readLicenseStatus } from "./license";
 
 const STORE = Symbol.for("express-endpoints-collection.license");
 const KEY = "key/with space";
 const LICENSE_URL = "https://stacknoir.com/eec/license";
 
 function resetLicenseSlot(): void {
-  delete (globalThis as { [STORE]?: Promise<LicenseStatus> })[STORE];
+  delete (globalThis as { [STORE]?: unknown })[STORE];
   delete process.env.EEC_API_KEY;
 }
 
@@ -24,6 +24,32 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe("getLicense", () => {
+  it("keeps configuring until the check settles and then does not fetch again", async () => {
+    resetLicenseSlot();
+    process.env.EEC_API_KEY = KEY;
+    let release: (response: Response) => void = () => undefined;
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const fetchMock = mock.method(globalThis, "fetch", () => pending);
+
+    try {
+      const pendingLicense = getLicense();
+      assert.deepEqual(readLicenseStatus(), { state: "configuring" });
+      assert.equal(fetchMock.mock.calls.length, 1);
+
+      release(jsonResponse({ valid: true, expires_at: "2099-01-01" }));
+      const status = await pendingLicense;
+
+      assert.equal(status.state, "valid");
+      assert.equal(readLicenseStatus()?.state, "valid");
+      await getLicense();
+      assert.equal(fetchMock.mock.calls.length, 1);
+    } finally {
+      release(jsonResponse({ valid: true, expires_at: "2099-01-01" }));
+    }
+  });
+
   it("does not fetch when the key is missing or blank", async () => {
     resetLicenseSlot();
     const fetchMock = mock.method(globalThis, "fetch", async () => {
@@ -31,14 +57,19 @@ describe("getLicense", () => {
     });
     const warnMock = mock.method(console, "warn", () => undefined);
 
-    const missing = await getLicense();
+    const missingPromise = getLicense();
+    assert.deepEqual(readLicenseStatus(), { state: "missing" });
+    const missing = await missingPromise;
     process.env.EEC_API_KEY = "   ";
     resetLicenseSlot();
     process.env.EEC_API_KEY = "   ";
-    const blank = await getLicense();
+    const blankPromise = getLicense();
+    assert.deepEqual(readLicenseStatus(), { state: "missing" });
+    const blank = await blankPromise;
 
     assert.deepEqual(missing, { state: "missing" });
     assert.deepEqual(blank, { state: "missing" });
+    assert.deepEqual(readLicenseStatus(), { state: "missing" });
     assert.equal(fetchMock.mock.calls.length, 0);
     assert.equal(warnMock.mock.calls.length, 0);
   });

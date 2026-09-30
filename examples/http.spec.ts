@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
-import { describe, it } from "node:test";
+import { after, before, describe, it, mock } from "node:test";
 import type { Express } from "express";
 import { sign } from "jsonwebtoken";
+import { getLicense } from "../src/license";
 import { app as advancedApp } from "./app";
 import { app as middlewaresApp } from "./middlewares";
+
+const LICENSE_SLOT = Symbol.for("express-endpoints-collection.license");
 
 async function withApp(
   app: Express,
@@ -44,6 +47,37 @@ async function postJson(
 }
 
 describe("example apps over HTTP", () => {
+  before(async () => {
+    delete (globalThis as { [LICENSE_SLOT]?: unknown })[LICENSE_SLOT];
+    process.env.EEC_API_KEY = "test-key";
+    const fetchMock = mock.method(
+      globalThis,
+      "fetch",
+      async () =>
+        new Response(
+          JSON.stringify({ valid: true, expires_at: "2099-01-01" }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+    );
+    try {
+      const status = await getLicense();
+      if (status.state !== "valid") {
+        throw new Error(`expected valid license, received ${status.state}`);
+      }
+    } finally {
+      fetchMock.mock.restore();
+    }
+  });
+
+  after(() => {
+    delete (globalThis as { [LICENSE_SLOT]?: unknown })[LICENSE_SLOT];
+    delete process.env.EEC_API_KEY;
+    mock.restoreAll();
+  });
+
   it("serves the advanced example routes", async () => {
     const token = bearer("your_jwt_secret");
 

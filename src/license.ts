@@ -119,7 +119,46 @@ async function checkLicense(key: string | undefined): Promise<LicenseStatus> {
   }
 }
 
+type StoredLicenseStatus = LicenseStatus | { state: "configuring" };
+
+type LicenseSlot = {
+  promise: Promise<LicenseStatus>;
+  status: StoredLicenseStatus;
+};
+
+function licenseStore(): { [STORE]?: LicenseSlot } {
+  return globalThis as { [STORE]?: LicenseSlot };
+}
+
+export function readLicenseStatus(): StoredLicenseStatus | undefined {
+  return licenseStore()[STORE]?.status;
+}
+
 export function getLicense(): Promise<LicenseStatus> {
-  const store = globalThis as { [STORE]?: Promise<LicenseStatus> };
-  return (store[STORE] ??= checkLicense(process.env.EEC_API_KEY?.trim()));
+  const store = licenseStore();
+  const existing = store[STORE];
+  if (existing) {
+    return existing.promise;
+  }
+
+  const key = process.env.EEC_API_KEY?.trim();
+  const created: LicenseSlot = {
+    status: { state: "configuring" },
+    promise: undefined as unknown as Promise<LicenseStatus>,
+  };
+
+  if (!key) {
+    const status: LicenseStatus = { state: "missing" };
+    created.status = status;
+    created.promise = Promise.resolve(status);
+    store[STORE] = created;
+    return created.promise;
+  }
+
+  created.promise = checkLicense(key).then((status) => {
+    created.status = status;
+    return status;
+  });
+  store[STORE] = created;
+  return created.promise;
 }

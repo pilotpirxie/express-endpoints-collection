@@ -495,11 +495,13 @@ app.get("/openapi.yaml", (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(port, () => {
-    console.info({
-      sdk: process.version,
-      datetime: new Date().toISOString(),
+  void api.getLicense().then(() => {
+    app.listen(port, () => {
+      console.info({
+        sdk: process.version,
+        datetime: new Date().toISOString(),
+      });
+      console.info(`Server is running on port ${port}`);
     });
-    console.info(`Server is running on port ${port}`);
   });
 }

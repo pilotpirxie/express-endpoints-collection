@@ -58,7 +58,9 @@ app.get("/openapi.yaml", (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(3000, () => {
-    console.info(`Server is running on port http://localhost:3000`);
+  void api.getLicense().then(() => {
+    app.listen(3000, () => {
+      console.info(`Server is running on port http://localhost:3000`);
+    });
   });
 }

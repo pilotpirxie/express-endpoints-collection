@@ -16,6 +16,7 @@ import { errorHandlerMiddleware } from "./errorHandler";
 import { jwtMiddleware } from "./jwt";
 import { createRateLimiter } from "./rateLimit";
 import { requestLoggerMiddleware } from "./requestLogger";
+import { withPaidLicense } from "./paidLicense";
 import { timeoutMiddleware } from "./timeout";
 import { timingPadMiddleware } from "./timingPad";
 
@@ -171,15 +172,23 @@ export function resolveMiddlewares(input: {
     }
   }
 
+  const cache = resolveCache(
+    collection?.cache,
+    endpoint?.cache,
+    input.cacheStore,
+  );
+
   return {
-    timingPad: timingPad ? timingPadMiddleware(timingPad.ms) : undefined,
-    timeout: timeout ? timeoutMiddleware(timeout) : undefined,
+    timingPad: timingPad
+      ? withPaidLicense(timingPadMiddleware(timingPad.ms))
+      : undefined,
+    timeout: timeout ? withPaidLicense(timeoutMiddleware(timeout)) : undefined,
     requestLogger: requestLogger
       ? requestLoggerMiddleware(requestLogger.log)
       : undefined,
-    rateLimiter,
+    rateLimiter: rateLimiter ? withPaidLicense(rateLimiter) : undefined,
     jwt: jwt ? jwtMiddleware(jwt) : undefined,
-    cache: resolveCache(collection?.cache, endpoint?.cache, input.cacheStore),
+    cache: cache ? withPaidLicense(cache) : undefined,
     errorHandler: errorHandler
       ? errorHandlerMiddleware(errorHandler)
       : undefined,

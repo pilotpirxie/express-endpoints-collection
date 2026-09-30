@@ -10,8 +10,8 @@
     "strict": true,
     "skipLibCheck": true,
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "declarationMap": false,
+    "sourceMap": false,
     "allowSyntheticDefaultImports": true,
     "checkJs": true,
     "allowJs": true
@@ -22,6 +22,7 @@
     "test",
     "coverage",
     "dist",
+    "scripts",
     "tests",
     "examples",
     "**/*.spec.ts"

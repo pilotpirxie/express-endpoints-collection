@@ -3,10 +3,11 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it, mock } from "node:test";
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { sign } from "jsonwebtoken";
 import { z } from "zod";
+import { getLicense } from "./license";
 import {
   defineMiddlewares,
   EndpointsCollection,
@@ -21,6 +22,35 @@ import {
 const emptyOkOutput = [
   { status: 200 as const, body: z.object({ ok: z.literal(true) }) },
 ];
+
+const LICENSE_SLOT = Symbol.for("express-endpoints-collection.license");
+
+function resetLicenseSlot(): void {
+  delete (globalThis as { [LICENSE_SLOT]?: unknown })[LICENSE_SLOT];
+  delete process.env.EEC_API_KEY;
+}
+
+async function settleValidLicense(): Promise<void> {
+  resetLicenseSlot();
+  process.env.EEC_API_KEY = "test-key";
+  const fetchMock = mock.method(
+    globalThis,
+    "fetch",
+    async () =>
+      new Response(JSON.stringify({ valid: true, expires_at: "2099-01-01" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  try {
+    const status = await getLicense();
+    if (status.state !== "valid") {
+      throw new Error(`expected valid license, received ${status.state}`);
+    }
+  } finally {
+    fetchMock.mock.restore();
+  }
+}
 
 async function withServer(
   configure: (app: Express) => void,
@@ -612,6 +642,15 @@ describe("built-in middlewares", () => {
   function token(sub = "1"): string {
     return sign({ sub }, secret, { algorithm: "HS256" });
   }
+
+  beforeEach(async () => {
+    await settleValidLicense();
+  });
+
+  afterEach(() => {
+    resetLicenseSlot();
+    mock.restoreAll();
+  });
 
   it("should keep working when middlewares are omitted", async () => {
     const collection = new EndpointsCollection();
@@ -1744,5 +1783,241 @@ describe("built-in middlewares", () => {
     } finally {
       console.error = originalError;
     }
+  });
+
+  describe("without a valid license", () => {
+    beforeEach(() => {
+      resetLicenseSlot();
+    });
+
+    it("should skip cache, rate limit, timeout, and timing pad without a license", async () => {
+      let calls = 0;
+      const collection = new EndpointsCollection({
+        middlewares: {
+          cache: { stdTTL: 60, checkperiod: 0, enabled: true },
+          rateLimit: {
+            windowMs: 60_000,
+            limit: 1,
+            validate: false,
+            enabled: true,
+          },
+          timeout: { ms: 50, enabled: true },
+          timingPad: { ms: 80, enabled: true },
+        },
+      });
+      collection.get(
+        "/cached",
+        {
+          outputSchema: emptyOkOutput,
+          middlewares: { cache: true, timeout: false, timingPad: false },
+        },
+        (_req, res) => {
+          calls += 1;
+          res.status(200).json({ ok: true });
+        },
+      );
+      collection.get(
+        "/limited",
+        {
+          outputSchema: emptyOkOutput,
+          middlewares: { rateLimit: true, timeout: false, timingPad: false },
+        },
+        (_req, res) => {
+          res.status(200).json({ ok: true });
+        },
+      );
+      collection.get(
+        "/slow",
+        {
+          outputSchema: emptyOkOutput,
+          middlewares: { timeout: true, timingPad: false },
+        },
+        (_req, res) => {
+          setTimeout(() => {
+            res.status(200).json({ ok: true });
+          }, 80);
+        },
+      );
+      collection.get(
+        "/fast",
+        {
+          outputSchema: emptyOkOutput,
+          middlewares: { timingPad: true, timeout: false },
+        },
+        (_req, res) => {
+          res.status(200).json({ ok: true });
+        },
+      );
+
+      await withServer(
+        (app) => {
+          app.use(collection.getRouter());
+        },
+        async (baseUrl) => {
+          const firstCached = await fetch(`${baseUrl}/cached`);
+          const secondCached = await fetch(`${baseUrl}/cached`);
+          assert.equal(firstCached.status, 200);
+          assert.equal(secondCached.status, 200);
+          assert.equal(calls, 2);
+
+          const firstLimited = await fetch(`${baseUrl}/limited`);
+          const secondLimited = await fetch(`${baseUrl}/limited`);
+          assert.equal(firstLimited.status, 200);
+          assert.equal(secondLimited.status, 200);
+
+          const slow = await fetch(`${baseUrl}/slow`);
+          assert.equal(slow.status, 200);
+          assert.deepEqual(await slow.json(), { ok: true });
+
+          const started = Date.now();
+          const fast = await fetch(`${baseUrl}/fast`);
+          assert.equal(fast.status, 200);
+          assert.ok(Date.now() - started < 80);
+        },
+      );
+    });
+
+    it("should keep jwt, request logger, and error handler without a license", async () => {
+      const logs: RequestLogInfo[] = [];
+      const collection = new EndpointsCollection({
+        middlewares: {
+          jwt: { secret, enabled: true },
+          requestLogger: {
+            enabled: true,
+            log: (info) => {
+              logs.push(info);
+            },
+          },
+          errorHandler: {
+            enabled: true,
+            onError: () => ({ status: 422, body: { errorCode: "boom" } }),
+          },
+        },
+      });
+      collection.get(
+        "/private",
+        { outputSchema: emptyOkOutput },
+        (_req, res) => {
+          res.status(200).json({ ok: true });
+        },
+      );
+      collection.get(
+        "/mapped",
+        { outputSchema: emptyOkOutput, middlewares: { jwt: false } },
+        () => {
+          throw new Error("Internal");
+        },
+      );
+
+      await withServer(
+        (app) => {
+          app.use(collection.getRouter());
+        },
+        async (baseUrl) => {
+          const missing = await fetch(`${baseUrl}/private`);
+          assert.equal(missing.status, 401);
+          assert.deepEqual(await missing.json(), {
+            error: "Missing Authorization Header",
+          });
+          assert.equal(logs.length, 1);
+          assert.equal(logs[0]?.statusCode, 401);
+
+          const mapped = await fetch(`${baseUrl}/mapped`);
+          assert.equal(mapped.status, 422);
+          assert.deepEqual(await mapped.json(), { errorCode: "boom" });
+        },
+      );
+    });
+
+    it("should skip paid middlewares for invalid, expired, and unreachable licenses", async () => {
+      const cases: Array<{
+        warning: RegExp;
+        installFetch: () => { mock: { restore: () => void } };
+      }> = [
+        {
+          warning: /license invalid/,
+          installFetch: () =>
+            mock.method(
+              globalThis,
+              "fetch",
+              async () =>
+                new Response(JSON.stringify({ valid: false }), {
+                  status: 200,
+                  headers: { "content-type": "application/json" },
+                }),
+            ),
+        },
+        {
+          warning: /license expired/,
+          installFetch: () =>
+            mock.method(
+              globalThis,
+              "fetch",
+              async () =>
+                new Response(
+                  JSON.stringify({ valid: true, expires_at: "2000-01-01" }),
+                  {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                  },
+                ),
+            ),
+        },
+        {
+          warning: /license unreachable/,
+          installFetch: () =>
+            mock.method(globalThis, "fetch", async () => {
+              throw new TypeError("connect failed");
+            }),
+        },
+      ];
+
+      for (const licenseCase of cases) {
+        mock.restoreAll();
+        resetLicenseSlot();
+        process.env.EEC_API_KEY = "test-key";
+        const warnMock = mock.method(console, "warn", () => undefined);
+        const fetchMock = licenseCase.installFetch();
+        try {
+          await getLicense();
+        } finally {
+          fetchMock.mock.restore();
+        }
+        assert.equal(warnMock.mock.calls.length, 1);
+        assert.match(
+          String(warnMock.mock.calls[0]?.arguments[0]),
+          licenseCase.warning,
+        );
+
+        let calls = 0;
+        const collection = new EndpointsCollection({
+          middlewares: {
+            cache: { stdTTL: 60, checkperiod: 0, enabled: true },
+          },
+        });
+        collection.get(
+          "/cached",
+          { outputSchema: emptyOkOutput, middlewares: { cache: true } },
+          (_req, res) => {
+            calls += 1;
+            res.status(200).json({ ok: true });
+          },
+        );
+
+        await withServer(
+          (app) => {
+            app.use(collection.getRouter());
+          },
+          async (baseUrl) => {
+            const first = await fetch(`${baseUrl}/cached`);
+            const second = await fetch(`${baseUrl}/cached`);
+            assert.equal(first.status, 200);
+            assert.equal(second.status, 200);
+            assert.equal(calls, 2);
+          },
+        );
+        assert.equal(warnMock.mock.calls.length, 1);
+      }
+    });
   });
 });
