@@ -120,6 +120,56 @@ describe("EndpointsApi", () => {
     );
   });
 
+  it("uses an injected cache store and replays statusCode", async () => {
+    await settleValidLicense();
+    const entries = new Map<string, unknown>();
+    let sets = 0;
+    let calls = 0;
+    const api = new EndpointsApi({
+      cacheStore: {
+        get: (key) => entries.get(key),
+        set: (key, value) => {
+          sets += 1;
+          entries.set(key, value);
+        },
+        del: (key) => {
+          entries.delete(key);
+        },
+      },
+      middlewares: {
+        cache: {},
+      },
+    });
+    const shops = api.createEndpointsCollection();
+    const createdOutput = [
+      { status: 201 as const, body: z.object({ ok: z.literal(true) }) },
+    ];
+
+    shops.post(
+      "/item",
+      { outputSchema: createdOutput, middlewares: { cache: true } },
+      (_req, res) => {
+        calls += 1;
+        res.status(201).json({ ok: true });
+      },
+    );
+
+    await withServer(
+      (app) => {
+        app.use(api.getRouter());
+      },
+      async (baseUrl) => {
+        const first = await fetch(`${baseUrl}/item`, { method: "POST" });
+        const second = await fetch(`${baseUrl}/item`, { method: "POST" });
+        assert.equal(first.status, 201);
+        assert.equal(second.status, 201);
+        assert.deepEqual(await second.json(), { ok: true });
+        assert.equal(calls, 1);
+        assert.equal(sets, 1);
+      },
+    );
+  });
+
   it("shares one rate limiter and keeps a per-route override separate", async () => {
     await settleValidLicense();
     const api = new EndpointsApi({

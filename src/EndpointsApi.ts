@@ -13,16 +13,22 @@ import { EndpointInfo } from "./types/EndpointInfo";
 import { EndpointsCollection } from "./EndpointsCollection";
 import type { RequestHandler } from "express";
 
+export type EndpointsApiConfig = CollectionConfig & {
+  cacheStore?: CacheStore;
+};
+
 export class EndpointsApi {
   private readonly collections: EndpointsCollection[] = [];
   private readonly router = Router();
   private readonly cacheStore?: CacheStore;
   private readonly defaultRateLimiter?: RequestHandler;
 
-  public constructor(private readonly config: CollectionConfig = {}) {
+  public constructor(private readonly config: EndpointsApiConfig = {}) {
     const middlewares = config.middlewares;
 
-    if (middlewares?.cache) {
+    if (config.cacheStore) {
+      this.cacheStore = config.cacheStore;
+    } else if (middlewares?.cache) {
       const {
         enabled: _enabled,
         key: _key,

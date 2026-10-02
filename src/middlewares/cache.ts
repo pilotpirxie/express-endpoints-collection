@@ -5,17 +5,20 @@ import type { NodeCacheOptions } from "../types/CollectionMiddlewares";
 type JSONCache = {
   type: "json";
   body: object;
+  statusCode?: number;
 };
 
 type RenderCache = {
   type: "render";
   view: string;
   options: object;
+  statusCode?: number;
 };
 
 type SendCache = {
   type: "send";
   body: string;
+  statusCode?: number;
 };
 
 type CacheEntry = JSONCache | RenderCache | SendCache;
@@ -64,6 +67,8 @@ export function cacheMiddleware(
     const cached = store.get(key);
 
     if (isCacheEntry(cached)) {
+      res.status(cached.statusCode || 200);
+
       if (cached.type === "json") {
         res.json(cached.body);
         return;
@@ -86,9 +91,18 @@ export function cacheMiddleware(
     const originalRender = res.render.bind(res);
     const originalSend = res.send.bind(res);
 
+    let remembered = false;
     const remember = (entry: CacheEntry) => {
+      if (remembered) {
+        return;
+      }
+      remembered = true;
       try {
-        store.set(key, entry, ttlSeconds);
+        store.set(
+          key,
+          { ...entry, statusCode: res.statusCode || 200 },
+          ttlSeconds,
+        );
       } catch (error: unknown) {
         console.error(error);
       }

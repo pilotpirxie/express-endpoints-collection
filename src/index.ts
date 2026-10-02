@@ -3,8 +3,9 @@ export { defineMiddlewares } from "./defineMiddlewares";
 export * from "./EndpointsApi";
 export * from "./EndpointsCollection";
 export * from "./generator";
+export type { CacheStore } from "./middlewares/cache";
 export type { ChildMiddlewares } from "./middlewares/mergeMiddlewares";
-export type { LicenseStatus } from "./license";
+export { getLicense, type LicenseStatus } from "./license";
 export type {
   CollectionConfig,
   CollectionMiddlewares,
