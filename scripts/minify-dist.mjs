@@ -3,6 +3,7 @@ import path from "node:path";
 import { minify } from "terser";
 
 const dist = path.resolve("dist");
+const entry = path.join(dist, "index.js");
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -21,7 +22,7 @@ for (const file of files) {
     await unlink(file);
     continue;
   }
-  if (!file.endsWith(".js")) continue;
+  if (!file.endsWith(".js") || file === entry) continue;
 
   const source = await readFile(file, "utf8");
   const result = await minify(source, {
